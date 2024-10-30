@@ -3,7 +3,11 @@ package cell
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
+
+	"github.com/davecgh/go-spew/spew"
+	"golang.org/x/term"
 )
 
 const (
@@ -13,6 +17,17 @@ const (
 type InfoPrinter struct {
 	io.Writer
 	width int
+}
+
+func NewInfoPrinter() *InfoPrinter {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		width = 120
+	}
+	return &InfoPrinter{
+		Writer: os.Stdout,
+		width:  width,
+	}
 }
 
 type Info interface {
@@ -44,6 +59,23 @@ func (n *InfoNode) Print(indent int, w *InfoPrinter) {
 		child.Print(indent, w)
 		if !n.condensed && i != len(n.children)-1 {
 			w.Write([]byte{'\n'})
+		}
+	}
+}
+
+type InfoStruct struct {
+	value any
+}
+
+/**/
+func (n *InfoStruct) Print(indent int, w *InfoPrinter) {
+	scs := spew.ConfigState{Indent: strings.Repeat(" ", identBy), SortKeys: true}
+	indentString := strings.Repeat(" ", indent)
+	for i, line := range strings.Split(scs.Sdump(n.value), "\n") {
+		if i == 0 {
+			fmt.Fprintf(w, "%s⚙️ %s\n", indentString, line)
+		} else {
+			fmt.Fprintf(w, "%s%s\n", indentString, line)
 		}
 	}
 }

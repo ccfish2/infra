@@ -1,6 +1,8 @@
 package cell
 
-import "regexp"
+import (
+	"regexp"
+)
 
 func Module(id, title string, cells ...Cell) Cell {
 	validateIDAndTitle(id, title)
@@ -25,6 +27,11 @@ type module struct {
 	id    string
 	title string
 	cells []Cell
+}
+
+// Apply implements Cell.
+func (m *module) Apply(container) error {
+	panic("unimplemented")
 }
 
 // Info implements Cell.
