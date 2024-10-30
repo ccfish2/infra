@@ -6,7 +6,6 @@ import (
 
 type Cell interface {
 	Info(container) Info
-
 	Apply(container) error
 }
 
@@ -18,5 +17,5 @@ type container interface {
 	Provide(ctor any, opts ...dig.ProvideOption) error
 	Invoke(fn any, opts ...dig.InvokeOption) error
 	Decorate(fn any, opts ...dig.DecorateOption) error
-	Scope(name string, opts ...dig.ScopeOption) error
+	Scope(name string, opts ...dig.ScopeOption) *dig.Scope
 }

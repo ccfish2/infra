@@ -57,7 +57,6 @@ func (lc *DefaultLifecycle) Start(ctx context.Context) error {
 		_, exists := getHookFuncName(hook, true)
 
 		if !exists {
-			// Count as started as there might be a stop hook.
 			lc.numStarted++
 			continue
 		}
@@ -79,9 +78,6 @@ func (lc *DefaultLifecycle) Stop(ctx context.Context) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	// Wrap the context to make sure it gets cancelled after
-	// stop hooks have completed in order to discourage using
-	// the context for unintended purposes.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -177,6 +173,11 @@ func getHookFuncName(hook HookInterface, start bool) (name string, hasHook bool)
 		return internal.PrettyType(hook) + ".Stop", true
 
 	}
+}
+
+type augmentedLifecycle struct {
+	*DefaultLifecycle
+	moduleID FullModuleID
 }
 
 var _ Lifecycle = &DefaultLifecycle{}

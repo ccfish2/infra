@@ -74,7 +74,6 @@ func (c *config[Cfg]) provideConfig(p configParams[Cfg]) (Cfg, error) {
 		return target, fmt.Errorf("failed to create config decoder: %w", err)
 	}
 
-	// As input, only consider the declared flags.
 	input := make(map[string]any)
 
 	c.flags.VisitAll(func(f *pflag.Flag) {
@@ -113,7 +112,6 @@ func (c *config[Cfg]) Apply(cont container) error {
 	return cont.Provide(c.provideConfig, dig.Export(true))
 }
 
-// Info implements Cell.
 func (c *config[Cfg]) Info(cont container) (info Info) {
 	cont.Invoke(func(cfg Cfg) {
 		info = &InfoStruct{cfg}
@@ -144,7 +142,6 @@ func stringToMapHookFunc(from reflect.Kind, to reflect.Kind, data interface{}) (
 	return utils.ToStringMapStringE(data.(string))
 }
 
-// stringToCIDRSliceHookFunc is a DecodeHookFunc that converts string to []*cidr.CIDR.
 func stringToCIDRHookFunc(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
 	if from.Kind() != reflect.String {
 		return data, nil
