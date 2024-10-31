@@ -37,6 +37,10 @@ var (
 	AddToScheme = localSchemeBuilder.AddToScheme
 )
 
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
 func init() {
 	// We only register manually written functions here. The registration of the
 	// generated functions takes place in the generated files. The separation
