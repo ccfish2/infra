@@ -45,3 +45,9 @@ type Health interface {
 	forModule(FullModuleID) statusNodeReporter
 	processed() uint64
 }
+
+type HealthReporter interface {
+	OK(status string)
+	Stopped(reason string)
+	Degraded(reason string, err error)
+}

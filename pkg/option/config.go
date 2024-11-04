@@ -16,6 +16,15 @@ import (
 )
 
 const (
+	EnableK8s             = "enable-k8s"
+	K8sAPIServer          = "k8s-api-server"
+	K8sKubeConfigPath     = "k8s-kubeconfig-path"
+	K8sServiceCacheSize   = "k8s-service-cache-size"
+	K8sClientQPSLimit     = "k8s-client-qps"
+	K8sClientBurst        = "k8s-client-burst"
+	K8sHeartbeatTimeout   = "k8s-heartbeat-timeout"
+	K8sEnableAPIDiscovery = "enable-k8s-api-discovery"
+
 	IdentityAllocationModeKVstore = "kvstore"
 	MonitorAggregationName        = "monitor-aggregation"
 	CTMapEntriesGlobalTCPName     = "bpf-ct-global-tcp-max"
@@ -84,6 +93,8 @@ type DaemonConfig struct {
 	EnableK8sNetworkPolicy bool
 	EnableEnvoyConfig      bool
 	EnableVTEP             bool
+
+	MaxControllerInterval int
 }
 
 var (

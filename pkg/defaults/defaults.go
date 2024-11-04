@@ -1,6 +1,8 @@
 package defaults
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	IPv6ClusterAllocCIDRBase = "f00d::"
@@ -43,4 +45,8 @@ const (
 	EnableBGPControlPlane     = false
 	EnableK8sNetworkPolicy    = true
 	EnableEnvoyConfig         = false
+
+	K8sClientQPSLimit     float32 = 0.0
+	K8sClientBurst                = 0
+	K8sEnableAPIDiscovery         = false
 )

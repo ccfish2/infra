@@ -1,6 +1,7 @@
 package cell
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -47,6 +48,41 @@ func NewInfoNode(header string) *InfoNode {
 
 func (n *InfoNode) Add(child Info) {
 	n.children = append(n.children, child)
+}
+
+type InfoLeaf string
+
+func (l InfoLeaf) Print(indent int, w *InfoPrinter) {
+	buf := bufio.NewWriter(w)
+	indentString := strings.Repeat(" ", indent)
+	buf.WriteString(indentString)
+	currentLineLength := len(indentString)
+	wrapped := false
+	for _, f := range strings.Fields(string(l)) {
+		newLineLength := currentLineLength + len(f) + 1
+		if newLineLength >= w.width {
+			buf.WriteByte('\n')
+			if !wrapped {
+				// Increase the indent for the wrapped lines so it's clear we
+				// wrapped.
+				wrapped = true
+				indent += 2
+				indentString = strings.Repeat(" ", indent)
+			}
+			buf.WriteString(indentString)
+			currentLineLength = indent + len(f) + 1
+		} else {
+			currentLineLength = newLineLength
+		}
+		buf.WriteString(f)
+		buf.WriteByte(' ')
+	}
+	buf.WriteByte('\n')
+	buf.Flush()
+}
+
+func (n *InfoNode) AddLeaf(format string, args ...any) {
+	n.Add(InfoLeaf(fmt.Sprintf(format, args...)))
 }
 
 func (n *InfoNode) Print(indent int, w *InfoPrinter) {

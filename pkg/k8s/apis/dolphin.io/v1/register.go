@@ -10,6 +10,10 @@ import (
 const (
 	CustomResourceDefinitionGroup   = apisgroupconst.CustomResourceDefinitionGroup
 	CustomResourceDefinitionVersion = "v1"
+
+	DEPPluralName     = "dolphinendpoints"
+	DEPKindDefinition = "DolphinEndpoint"
+	DEPName           = DEPPluralName + "." + CustomResourceDefinitionGroup
 )
 
 var SchemeGroupVersion = schema.GroupVersion{
