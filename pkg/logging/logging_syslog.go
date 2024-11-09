@@ -3,7 +3,6 @@ package logging
 import (
 	"log/syslog"
 
-	"github.com/sirupsen/logrus"
 	logrus_syslog "github.com/sirupsen/logrus"
 )
 
@@ -62,14 +61,14 @@ var (
 		"local6":   syslog.LOG_LOCAL6,
 		"local7":   syslog.LOG_LOCAL7,
 	}
-	syslogLevelMap = map[logrus.Level]syslog.Priority{
-		logrus.PanicLevel: syslog.LOG_ALERT,
-		logrus.FatalLevel: syslog.LOG_CRIT,
-		logrus.ErrorLevel: syslog.LOG_ERR,
-		logrus.WarnLevel:  syslog.LOG_WARNING,
-		logrus.InfoLevel:  syslog.LOG_INFO,
-		logrus.DebugLevel: syslog.LOG_DEBUG,
-		logrus.TraceLevel: syslog.LOG_DEBUG,
+	syslogLevelMap = map[logrus_syslog.Level]syslog.Priority{
+		logrus_syslog.PanicLevel: syslog.LOG_ALERT,
+		logrus_syslog.FatalLevel: syslog.LOG_CRIT,
+		logrus_syslog.ErrorLevel: syslog.LOG_ERR,
+		logrus_syslog.WarnLevel:  syslog.LOG_WARNING,
+		logrus_syslog.InfoLevel:  syslog.LOG_INFO,
+		logrus_syslog.DebugLevel: syslog.LOG_DEBUG,
+		logrus_syslog.TraceLevel: syslog.LOG_DEBUG,
 	}
 )
 
@@ -102,36 +101,12 @@ func setupSyslog(logOpts LogOptions, tag string, debug bool) error {
 		}
 	}
 
-	level, err := logrus.ParseLevel(logLevel)
+	level, err := logrus_syslog.ParseLevel(logLevel)
 	if err != nil {
 		DefaultLogger.Fatal(err)
 	}
 
 	SetLogLevel(level)
-
-	network := ""
-	address := ""
-	severity := syslogLevelMap[level]
-	facility := syslog.LOG_KERN
-	if networkStr, ok := opts[SNetwork]; ok {
-		network = networkStr
-	}
-	if addressStr, ok := opts[SAddress]; ok {
-		address = addressStr
-	}
-	if severityStr, ok := opts[SSeverity]; ok {
-		severity = syslogSeverityMap[severityStr]
-	}
-	if facilityStr, ok := opts[SFacility]; ok {
-		facility = syslogFacilityMap[facilityStr]
-	}
-
-	h, err := logrus_syslog.NewSyslogHook(network, address, severity|facility, tag)
-	if err != nil {
-		DefaultLogger.Fatal(err)
-	}
-	logrus.AddHook(h)
-	DefaultLogger.AddHook(h)
 
 	return nil
 }
