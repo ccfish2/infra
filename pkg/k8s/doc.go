@@ -1,1 +1,1 @@
-# container of k8s modules
+// container of k8s modules
