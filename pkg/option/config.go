@@ -29,6 +29,24 @@ const (
 	MonitorAggregationName        = "monitor-aggregation"
 	CTMapEntriesGlobalTCPName     = "bpf-ct-global-tcp-max"
 	CTMapEntriesGlobalAnyName     = "bpf-ct-global-any-max"
+
+	AllowICMPFragNeeded             = "allow-icmp-frag-needed"
+	AnnotateK8sNode                 = "annotate-k8s-node"
+	EnableIPv4Name                  = "enable-ipv4"
+	EnableIPv6Name                  = "enable-ipv6"
+	EnableIPv6NDPName               = "enable-ipv6-ndp"
+	EnableSCTPName                  = "enable-sctp"
+	EnableEndpointRoutes            = "enable-endpoint-routes"
+	EnableHealthChecking            = "enable-health-checking"
+	EnableEndpointHealthChecking    = "enable-endpoint-health-checking"
+	EnableHealthCheckNodePort       = "enable-health-check-nodeport"
+	EnableHealthCheckLoadBalancerIP = "enable-health-check-loadbalancer-ip"
+	IdentityChangeGracePeriod       = "identity-change-grace-period"
+	IdentityRestoreGracePeriod      = "identity-restore-grace-period"
+	AllocatorListTimeoutName        = "allocator-list-timeout"
+	KVstorePeriodicSync             = "kvstore-periodic-sync"
+	KVstoreConnectivityTimeout      = "kvstore-connectivity-timeout"
+	IPAllocationTimeout             = "ip-allocation-timeout"
 )
 
 // operator or application runs as a daemonset on
@@ -143,6 +161,27 @@ var (
 		EnableEnvoyConfig:      defaults.EnableEnvoyConfig,
 	}
 )
+
+func (c *DaemonConfig) Populate(vp *viper.Viper) {
+	c.AllowICMPFragNeeded = vp.GetBool(AllowICMPFragNeeded)
+	c.AnnotateK8sNode = vp.GetBool(AnnotateK8sNode)
+	c.EnableIPv4 = vp.GetBool(EnableIPv4Name)
+	c.EnableIPv6 = vp.GetBool(EnableIPv6Name)
+	c.EnableIPv6NDP = vp.GetBool(EnableIPv6NDPName)
+	c.EnableSCTP = vp.GetBool(EnableSCTPName)
+	c.EnableEndpointRoutes = vp.GetBool(EnableEndpointRoutes)
+	c.EnableHealthChecking = vp.GetBool(EnableHealthChecking)
+	c.EnableEndpointHealthChecking = vp.GetBool(EnableEndpointHealthChecking)
+	c.EnableHealthCheckNodePort = vp.GetBool(EnableHealthCheckNodePort)
+	c.EnableHealthCheckLoadBalancerIP = vp.GetBool(EnableHealthCheckLoadBalancerIP)
+	c.IdentityChangeGracePeriod = vp.GetDuration(IdentityChangeGracePeriod)
+	c.IdentityRestoreGracePeriod = vp.GetDuration(IdentityRestoreGracePeriod)
+	c.K8sServiceCacheSize = uint(vp.GetInt(K8sServiceCacheSize))
+	c.AllocatorListTimeout = vp.GetDuration(AllocatorListTimeoutName)
+	c.KVstorePeriodicSync = vp.GetDuration(KVstorePeriodicSync)
+	c.KVstoreConnectivityTimeout = vp.GetDuration(KVstoreConnectivityTimeout)
+	c.IPAllocationTimeout = vp.GetDuration(IPAllocationTimeout)
+}
 
 func InitConfig(cmd *cobra.Command, programName, configName string, vp *viper.Viper) func() {
 	return func() {
