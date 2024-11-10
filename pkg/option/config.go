@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -181,6 +184,25 @@ func (c *DaemonConfig) Populate(vp *viper.Viper) {
 	c.KVstorePeriodicSync = vp.GetDuration(KVstorePeriodicSync)
 	c.KVstoreConnectivityTimeout = vp.GetDuration(KVstoreConnectivityTimeout)
 	c.IPAllocationTimeout = vp.GetDuration(IPAllocationTimeout)
+}
+
+func logRegisteredOptions(vp *viper.Viper, entry *logrus.Entry) {
+	keys := vp.AllKeys()
+	sort.Strings(keys)
+	for _, k := range keys {
+		ss := vp.GetStringSlice(k)
+		if len(ss) == 0 {
+			sm := vp.GetStringMap(k)
+			for k, v := range sm {
+				ss = append(ss, fmt.Sprintf("%s=%s", k, v))
+			}
+		}
+		if len(ss) > 0 {
+			entry.Infof("  --%s='%s'", k, strings.Join(ss, ""))
+		} else {
+			entry.Infof("  --%s='%s'", k, vp.GetString(k))
+		}
+	}
 }
 
 func InitConfig(cmd *cobra.Command, programName, configName string, vp *viper.Viper) func() {
