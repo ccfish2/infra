@@ -21,6 +21,7 @@ import (
 	"github.com/ccfish2/infra/pkg/metrics"
 	"github.com/ccfish2/infra/pkg/promise"
 	"github.com/ccfish2/infra/pkg/stream"
+	"github.com/cilium/cilium/pkg/k8s/watchers/resources"
 )
 
 type options struct {
@@ -498,7 +499,89 @@ func (r *resource[T]) startWhenNeeded() {
 }
 
 func (r *resource[T]) newInformer() (cache.Indexer, cache.Controller) {
-	panic("not implemented yet")
+	clientState := cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, r.opts.indexers)
+	opts := cache.DeltaFIFOOptions{KeyFunction: cache.MetaNamespaceKeyFunc, KnownObjects: clientState}
+	fifo := cache.NewDeltaFIFOWithOptions(opts)
+	transformer := r.opts.transform
+	cacheMutationDetector := cache.NewCacheMutationDetector(fmt.Sprintf("%T", r))
+	cfg := &cache.Config{
+		Queue:            fifo,
+		ListerWatcher:    r.lw,
+		ObjectType:       r.opts.sourceObj(),
+		FullResyncPeriod: 0,
+		RetryOnError:     false,
+		Process: func(obj interface{}, isInInitialList bool) error {
+			r.mu.Lock()
+			defer r.mu.Unlock()
+
+			for _, d := range obj.(cache.Deltas) {
+				var obj interface{}
+				if transformer != nil {
+					var err error
+					if obj, err = transformer(d.Object); err != nil {
+						return err
+					}
+				} else {
+					obj = d.Object
+				}
+
+				cacheMutationDetector.AddObject(obj)
+
+				key := NewKey(obj)
+
+				switch d.Type {
+				case cache.Sync, cache.Added, cache.Updated:
+					metric := resources.MetricCreate
+					if d.Type != cache.Added {
+						metric = resources.MetricUpdate
+					}
+					r.metricEventReceived(metric, true, false)
+
+					if _, exists, err := clientState.Get(obj); err == nil && exists {
+						if err := clientState.Update(obj); err != nil {
+							return err
+						}
+					} else {
+						if err := clientState.Add(obj); err != nil {
+							return err
+						}
+					}
+
+					for _, sub := range r.subscribers {
+						sub.enqueuekey(key)
+					}
+				case cache.Deleted:
+					r.metricEventReceived(resources.MetricDelete, true, false)
+
+					if err := clientState.Delete(obj); err != nil {
+						return err
+					}
+
+					for _, sub := range r.subscribers {
+						sub.enqueuekey(key)
+					}
+				}
+
+			}
+			return nil
+
+		},
+	}
+	return clientState, &wrapperController{
+		Controller:            cache.New(cfg),
+		cacheMutationDetector: cacheMutationDetector,
+	}
+}
+
+func (r *resource[T]) metricEventReceived(action string, valid, equal bool) {
+	if r.opts.metricScope == "" {
+		return
+	}
+}
+
+type wrapperController struct {
+	cache.Controller
+	cacheMutationDetector cache.MutationDetector
 }
 
 // merge two cases into one channel
