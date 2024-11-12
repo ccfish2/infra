@@ -3,16 +3,22 @@ package resource
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	// dolphin
 	"github.com/ccfish2/infra/pkg/hive/cell"
+	"github.com/ccfish2/infra/pkg/metrics"
 	"github.com/ccfish2/infra/pkg/promise"
 	"github.com/ccfish2/infra/pkg/stream"
 )
@@ -22,6 +28,7 @@ type options struct {
 	sourceObj   func() k8sRuntime.Object
 	indexers    cache.Indexers
 	metricScope string
+	name        string
 	releasable  bool
 }
 
@@ -93,6 +100,17 @@ func New[T k8sRuntime.Object](lc cell.Lifecycle, lw cache.ListerWatcher, opts ..
 	return r
 }
 
+func (r *resource[T]) Stop(stopCtx cell.HookContext) error {
+	if r.opts.releasable {
+		r.refsMu.Lock()
+		defer r.refsMu.Unlock()
+	}
+
+	r.cancel()
+	r.wg.Wait()
+	return nil
+}
+
 func (r *resource[T]) Observe(ctx context.Context, next func(Event[T]), complete func(error)) {
 	stream.FromChannel(r.Events(ctx)).Observe(ctx, next, complete)
 }
@@ -121,6 +139,21 @@ func (s *subscriber[T]) enqueuekey(key Key) {
 	s.wq.Add(keyWorkItem{key})
 }
 
+// create a new pointer to the reconciled resource type
+func (r *resource[T]) resourceName() string {
+	if r.opts.name != "" {
+		return r.opts.name
+	}
+
+	o := *new(T)
+	sourceObj := reflect.New(reflect.TypeOf(o).Elem()).Interface().(T)
+
+	gvk, err := apiutil.GVKForObject(sourceObj, scheme)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(gvk.Kind)
+}
 func (r *resource[T]) Events(ctx context.Context, opts ...EventsOpts) <-chan Event[T] {
 	_, callerFile, callerLine, _ := runtime.Caller(1)
 	debugInfo := fmt.Sprintf("%T.Events() called from %s:%d", r, callerFile, callerLine)
@@ -141,7 +174,7 @@ func (r *resource[T]) Events(ctx context.Context, opts ...EventsOpts) <-chan Eve
 		options:   options,
 		debugInfo: debugInfo,
 		wq: workqueue.NewRateLimitingQueueWithConfig(options.rateLimiter,
-			workqueue.RateLimitingQueueConfig{Name: r.resourceName{}}),
+			workqueue.RateLimitingQueueConfig{Name: r.resourceName()}),
 	}
 
 	r.wg.Add()
@@ -212,6 +245,25 @@ func (l *lastKnownObject[T]) Store(key Key, obj T) {
 	l.objs[key] = obj
 }
 
+func (l *lastKnownObject[T]) DeleteByUID(key Key, objToDelete T) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if obj, ok := l.objs[key]; ok {
+		if getUID(obj) == getUID(objToDelete) {
+			delete(l.objs, key)
+		}
+	}
+}
+
+func getUID(obj k8sRuntime.Object) types.UID {
+	meta, err := meta.Accessor(obj)
+	if err != nil {
+		panic(err)
+	}
+	return meta.GetUID()
+}
+
 func (s *subscriber[T]) processLoop(ctx context.Context, out chan Event[T], store Store[T]) {
 	// shutdown workqueue
 	defer s.wq.ShutDown()
@@ -254,7 +306,7 @@ loop:
 				event.Object = obj
 			}
 		default:
-			panic("%T: unknown work item %T", s.r, workItem)
+			panic(fmt.Sprintf("%T: unknown work item %T", s.r, workItem))
 		}
 
 		var eventDoneSentinel = new(bool)
@@ -290,6 +342,29 @@ loop:
 	// process syncWorkItem or keyWorkItem separately
 }
 
+func (r *resource[T]) metricEventProcessed(eventKind EventKind, status bool) {
+	if r.opts.metricScope == "" {
+		return
+	}
+
+	result := "success"
+	if !status {
+		result = "failed"
+	}
+
+	var action string
+	switch eventKind {
+	case Sync:
+		return
+	case Upsert:
+		action = "update"
+	case Delete:
+		action = "delete"
+	}
+
+	metrics.KubernetesEventProcessed.WithLabelValues(r.opts.metricScope, action, result).Inc()
+}
+
 func (s *subscriber[T]) eventDone(entry workItem, err error) {
 	defer s.wq.Done(entry)
 
@@ -299,7 +374,7 @@ func (s *subscriber[T]) eventDone(entry workItem, err error) {
 		var action ErrorAction
 		switch entry := entry.(type) {
 		case syncWorkItem:
-			action := s.options.errorHandler(Key{}, numRequeues, err)
+			action = s.options.errorHandler(Key{}, numRequeues, err)
 		case keyWorkItem:
 			action = s.options.errorHandler(entry.key, numRequeues, err)
 		default:
@@ -335,7 +410,8 @@ func (s *subscriber[T]) getWorkItem() (e workItem, shutdown bool) {
 }
 
 func (r *resource[T]) Start(cell.HookContext) error {
-
+	r.start()
+	return nil
 }
 
 func (r *resource[T]) start() {
@@ -382,7 +458,7 @@ func (r *resource[T]) release() {
 func (r *resource[T]) reset() {
 	r.subscribers = make(map[uint64]*subscriber[T])
 	r.needed = make(chan struct{}, 1)
-	r.storeResolver, r.storePrommise = promise.New[Store[T]]()
+	r.storeResolver, r.storePromise = promise.New[Store[T]]()
 	r.resetCtx, r.resetCancel = context.WithCancel(context.Background())
 }
 
@@ -422,7 +498,7 @@ func (r *resource[T]) startWhenNeeded() {
 }
 
 func (r *resource[T]) newInformer() (cache.Indexer, cache.Controller) {
-
+	panic("not implemented yet")
 }
 
 // merge two cases into one channel
