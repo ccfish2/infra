@@ -18,6 +18,7 @@ func TrimName(name string) string {
 	return string(baseNameRegex.ReplaceAll([]byte(name), []byte{}))
 }
 
+// return the function name of the function
 func FuncNameAndLocation(fn any) string {
 	f := runtime.FuncForPC(reflect.ValueOf(fn).Pointer())
 	file, line := f.FileLine(f.Entry())

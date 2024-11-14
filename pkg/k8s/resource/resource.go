@@ -18,10 +18,10 @@ import (
 
 	// dolphin
 	"github.com/ccfish2/infra/pkg/hive/cell"
+	"github.com/ccfish2/infra/pkg/k8s/watchers/resources"
 	"github.com/ccfish2/infra/pkg/metrics"
 	"github.com/ccfish2/infra/pkg/promise"
 	"github.com/ccfish2/infra/pkg/stream"
-	"github.com/cilium/cilium/pkg/k8s/watchers/resources"
 )
 
 type options struct {
@@ -64,7 +64,7 @@ type resource[T k8sRuntime.Object] struct {
 	resetCancel context.CancelFunc
 }
 
-var _ Resource[corev1.Node] = &resource[corev1.Node]{}
+var _ Resource[*corev1.Node] = &resource[*corev1.Node]{}
 
 type ResourceOption func(o *options)
 
