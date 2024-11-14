@@ -10,6 +10,46 @@ type typedStore[T k8sRuntime.Object] struct {
 	release func()
 }
 
+// ByIndex implements Store.
+func (t *typedStore[T]) ByIndex(indexName string, indexedValue string) ([]T, error) {
+	panic("unimplemented")
+}
+
+// CacheStore implements Store.
+func (t *typedStore[T]) CacheStore() cache.Store {
+	panic("unimplemented")
+}
+
+// Get implements Store.
+func (t *typedStore[T]) Get(obj T) (item T, exists bool, err error) {
+	panic("unimplemented")
+}
+
+// GetByKey implements Store.
+func (t *typedStore[T]) GetByKey(key Key) (item T, exists bool, err error) {
+	panic("unimplemented")
+}
+
+// IndexKeys implements Store.
+func (t *typedStore[T]) IndexKeys(indexName string, indexedValue string) ([]string, error) {
+	panic("unimplemented")
+}
+
+// IterKeys implements Store.
+func (t *typedStore[T]) IterKeys() KeyIter {
+	panic("unimplemented")
+}
+
+// List implements Store.
+func (t *typedStore[T]) List() []T {
+	panic("unimplemented")
+}
+
+// Release implements Store.
+func (t *typedStore[T]) Release() {
+	panic("unimplemented")
+}
+
 /* similar as cache.Store */
 type Store[T k8sRuntime.Object] interface {
 	List() []T

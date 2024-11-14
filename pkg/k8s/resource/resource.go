@@ -178,7 +178,7 @@ func (r *resource[T]) Events(ctx context.Context, opts ...EventsOpts) <-chan Eve
 			workqueue.RateLimitingQueueConfig{Name: r.resourceName()}),
 	}
 
-	r.wg.Add()
+	r.wg.Add(1)
 	go func() {
 		defer r.release()
 		defer r.wg.Done()
