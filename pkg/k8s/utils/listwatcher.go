@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 )
@@ -34,4 +37,27 @@ func ListerWatcherWithModifiers(lw cache.ListerWatcher, opts ...func(*metav1.Lis
 		lw = ListerWatcherWithModifier(lw, opt)
 	}
 	return lw
+}
+
+type typedListWatcher[T k8sRuntime.Object] interface {
+	List(ctx context.Context, opts metav1.ListOptions) (T, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+}
+
+type genListWatcher[T k8sRuntime.Object] struct {
+	lw typedListWatcher[T]
+}
+
+// List implements cache.ListerWatcher.
+func (g *genListWatcher[T]) List(options metav1.ListOptions) (k8sRuntime.Object, error) {
+	return g.lw.List(context.Background(), options)
+}
+
+// Watch implements cache.ListerWatcher.
+func (g *genListWatcher[T]) Watch(options metav1.ListOptions) (watch.Interface, error) {
+	return g.lw.Watch(context.Background(), options)
+}
+
+func ListerWatcherFromTyped[T k8sRuntime.Object](lw typedListWatcher[T]) cache.ListerWatcher {
+	return &genListWatcher[T]{lw: lw}
 }

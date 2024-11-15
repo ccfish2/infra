@@ -117,6 +117,7 @@ type DaemonConfig struct {
 
 	MaxControllerInterval int
 	LogDriver             []string
+	Debug                 bool
 }
 
 var (
