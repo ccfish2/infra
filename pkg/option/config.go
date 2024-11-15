@@ -186,7 +186,7 @@ func (c *DaemonConfig) Populate(vp *viper.Viper) {
 	c.IPAllocationTimeout = vp.GetDuration(IPAllocationTimeout)
 }
 
-func logRegisteredOptions(vp *viper.Viper, entry *logrus.Entry) {
+func LogRegisteredOptions(vp *viper.Viper, entry *logrus.Entry) {
 	keys := vp.AllKeys()
 	sort.Strings(keys)
 	for _, k := range keys {
