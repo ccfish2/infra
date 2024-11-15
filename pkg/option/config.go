@@ -116,6 +116,7 @@ type DaemonConfig struct {
 	EnableVTEP             bool
 
 	MaxControllerInterval int
+	LogDriver             []string
 }
 
 var (
