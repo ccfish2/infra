@@ -50,7 +50,19 @@ const (
 	KVstorePeriodicSync             = "kvstore-periodic-sync"
 	KVstoreConnectivityTimeout      = "kvstore-connectivity-timeout"
 	IPAllocationTimeout             = "ip-allocation-timeout"
+
+	EndpointStatus = "endpoint-status"
+
+	EndpointStatusPolicy      = "policy"
+	EndpointStatusHealth      = "health"
+	EndpointStatusControllers = "controllers"
+	EndpointStatusLog         = "log"
+	EndpointStatusState       = "state"
 )
+
+func (c *DaemonConfig) DolphinNamespaceName() string {
+	return c.K8sNamespace
+}
 
 // operator or application runs as a daemonset on
 // each node
@@ -59,6 +71,8 @@ type DaemonConfig struct {
 	ConfigDir    string
 	CreationTime time.Time
 	Opts         *IntOptions
+
+	K8sNamespace string
 
 	IPv6ClusterAllocCIDR     string
 	IPv6ClusterAllocCIDRBase string
