@@ -63,6 +63,15 @@ type DolphinEndpointStatus struct {
 	State            map[string]string       `json:"state,omitempty"`
 	AllocationStatus map[string]AllocationIP `json:"allocation_status,omitempty"`
 	Checksum         int64                   `json:"checksum,omitempty"`
+	Identity         *EndpointIdentity       `json:"identity,omitempty"`
+}
+
+type EndpointIdentity struct {
+	// ID is the numeric identity of the endpoint
+	ID int64 `json:"id,omitempty"`
+
+	// Labels is the list of labels associated with the identity
+	Labels []string `json:"labels,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -74,4 +83,39 @@ type DolphinEndpointList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []DolphinEndpoint `json:"items"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:resource:categories={dolphin},singular="dolphinendpointslice",path="dolphinendpointslices",scope="Cluster",shortName={ces}
+// +kubebuilder:storageversion
+
+// DolphinEndpointSlice contains a group of CoreDolphinendpoints.
+type DolphinEndpointSlice struct {
+	// +deepequal-gen=false
+	metav1.TypeMeta `json:",inline"`
+	// +deepequal-gen=false
+	metav1.ObjectMeta `json:"metadata"`
+
+	// Namespace indicate as DolphinEndpointSlice namespace.
+	// All the DolphinEndpoints within the same namespace are put together
+	// in DolphinEndpointSlice.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Endpoints is a list of coreCEPs packed in a DolphinEndpointSlice
+	Endpoints []DolphinEndpoint `json:"endpoints"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=false
+// +deepequal-gen=false
+
+// DolphinEndpointSliceList is a list of DolphinEndpointSlice objects.
+type DolphinEndpointSliceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	// Items is a list of DolphinEndpointSlice.
+	Items []DolphinEndpointSlice `json:"items"`
 }
