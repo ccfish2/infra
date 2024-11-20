@@ -24,3 +24,15 @@ type DolphinEndpointListerExpansion interface{}
 // DolphinEndpointNamespaceListerExpansion allows custom methods to be added to
 // DolphinEndpointNamespaceLister.
 type DolphinEndpointNamespaceListerExpansion interface{}
+
+// DolphinEndpointSliceListerExpansion allows custom methods to be added to
+// DolphinEndpointSliceLister.
+type DolphinEndpointSliceListerExpansion interface{}
+
+// DolphinEnvoyConfigListerExpansion allows custom methods to be added to
+// DolphinEnvoyConfigLister.
+type DolphinEnvoyConfigListerExpansion interface{}
+
+// DolphinEnvoyConfigNamespaceListerExpansion allows custom methods to be added to
+// DolphinEnvoyConfigNamespaceLister.
+type DolphinEnvoyConfigNamespaceListerExpansion interface{}

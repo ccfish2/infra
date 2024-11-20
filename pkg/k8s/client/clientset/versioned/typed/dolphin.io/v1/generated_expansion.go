@@ -18,3 +18,7 @@ limitations under the License.
 package v1
 
 type DolphinEndpointExpansion interface{}
+
+type DolphinEndpointSliceExpansion interface{}
+
+type DolphinEnvoyConfigExpansion interface{}

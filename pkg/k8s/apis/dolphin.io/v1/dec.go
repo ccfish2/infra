@@ -40,6 +40,7 @@ type DolphinEnvoyConfigSpec struct {
 	BackendServices []*Service         `json:"backendServices,omitempty"`
 	Resources       []XDSResource      `json:"resources,omitempty"`
 }
+
 type Service struct {
 	Name      string   `json:"name,omitempty"`
 	Namespace string   `json:"namespace,omitempty"`

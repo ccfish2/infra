@@ -28,6 +28,8 @@ import (
 type DolphinV1Interface interface {
 	RESTClient() rest.Interface
 	DolphinEndpointsGetter
+	DolphinEndpointSlicesGetter
+	DolphinEnvoyConfigsGetter
 }
 
 // DolphinV1Client is used to interact with features provided by the dolphin.io group.
@@ -37,6 +39,14 @@ type DolphinV1Client struct {
 
 func (c *DolphinV1Client) DolphinEndpoints(namespace string) DolphinEndpointInterface {
 	return newDolphinEndpoints(c, namespace)
+}
+
+func (c *DolphinV1Client) DolphinEndpointSlices() DolphinEndpointSliceInterface {
+	return newDolphinEndpointSlices(c)
+}
+
+func (c *DolphinV1Client) DolphinEnvoyConfigs(namespace string) DolphinEnvoyConfigInterface {
+	return newDolphinEnvoyConfigs(c, namespace)
 }
 
 // NewForConfig creates a new DolphinV1Client for the given config.

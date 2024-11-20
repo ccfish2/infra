@@ -25,6 +25,10 @@ import (
 type Interface interface {
 	// DolphinEndpoints returns a DolphinEndpointInformer.
 	DolphinEndpoints() DolphinEndpointInformer
+	// DolphinEndpointSlices returns a DolphinEndpointSliceInformer.
+	DolphinEndpointSlices() DolphinEndpointSliceInformer
+	// DolphinEnvoyConfigs returns a DolphinEnvoyConfigInformer.
+	DolphinEnvoyConfigs() DolphinEnvoyConfigInformer
 }
 
 type version struct {
@@ -41,4 +45,14 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // DolphinEndpoints returns a DolphinEndpointInformer.
 func (v *version) DolphinEndpoints() DolphinEndpointInformer {
 	return &dolphinEndpointInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// DolphinEndpointSlices returns a DolphinEndpointSliceInformer.
+func (v *version) DolphinEndpointSlices() DolphinEndpointSliceInformer {
+	return &dolphinEndpointSliceInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// DolphinEnvoyConfigs returns a DolphinEnvoyConfigInformer.
+func (v *version) DolphinEnvoyConfigs() DolphinEnvoyConfigInformer {
+	return &dolphinEnvoyConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

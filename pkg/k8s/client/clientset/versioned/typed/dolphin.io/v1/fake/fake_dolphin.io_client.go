@@ -31,6 +31,14 @@ func (c *FakeDolphinV1) DolphinEndpoints(namespace string) v1.DolphinEndpointInt
 	return &FakeDolphinEndpoints{c, namespace}
 }
 
+func (c *FakeDolphinV1) DolphinEndpointSlices() v1.DolphinEndpointSliceInterface {
+	return &FakeDolphinEndpointSlices{c}
+}
+
+func (c *FakeDolphinV1) DolphinEnvoyConfigs(namespace string) v1.DolphinEnvoyConfigInterface {
+	return &FakeDolphinEnvoyConfigs{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeDolphinV1) RESTClient() rest.Interface {
