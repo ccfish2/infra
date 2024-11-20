@@ -1,6 +1,12 @@
 package v1
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -54,4 +60,31 @@ type ServiceListener struct {
 
 type XDSResource struct {
 	*anypb.Any `json:"-"`
+}
+
+func (in *XDSResource) DeepCopyInto(out *XDSResource) {
+	out.Any, _ = proto.Clone(in.Any).(*anypb.Any)
+}
+
+func (in *XDSResource) DeepEqual(other *XDSResource) bool {
+	return proto.Equal(in.Any, other.Any)
+}
+
+func (in *XDSResource) MarshalJSON() ([]byte, error) {
+	return protojson.Marshal(in.Any)
+}
+
+func (in *XDSResource) UnmarshalJSON(b []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("json decoding panic")
+		}
+	}()
+	var o anypb.Any
+	if err := protojson.Unmarshal(b, &o); err != nil {
+		var buf bytes.Buffer
+		json.Indent(&buf, b, "", "\t")
+		err = fmt.Errorf(" error %s", buf.String())
+	}
+	return nil
 }
