@@ -38,7 +38,6 @@ type DefaultLifecycle struct {
 	numStarted int
 }
 
-// Append implements Lifecycle.
 func (lc *DefaultLifecycle) Append(hook HookInterface) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -53,6 +52,7 @@ func (lc *DefaultLifecycle) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	fmt.Println("Lifecycle start...")
 	for _, hook := range lc.hooks {
 		_, exists := getHookFuncName(hook, true)
 
@@ -61,14 +61,14 @@ func (lc *DefaultLifecycle) Start(ctx context.Context) error {
 			continue
 		}
 
-		fmt.Printf("Executing start hook")
+		fmt.Println("Executing start hook")
 		t0 := time.Now()
 		if err := hook.Start(ctx); err != nil {
 
 			return err
 		}
 		d := time.Since(t0)
-		fmt.Printf("after %d", d)
+		fmt.Println("executed after ", d)
 		lc.numStarted++
 	}
 	return nil
