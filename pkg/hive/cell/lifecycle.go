@@ -41,7 +41,7 @@ type DefaultLifecycle struct {
 func (lc *DefaultLifecycle) Append(hook HookInterface) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-
+	fmt.Println("added hook %v", hook)
 	lc.hooks = append(lc.hooks, augmentedHook{hook, nil})
 }
 
