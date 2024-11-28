@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	baseNameRegex = regexp.MustCompile(`github\.com/ccfish2/[infra|controller\-powered\-by\-DI]/[\w\/]+/`)
+	baseNameRegex = regexp.MustCompile(`github\.com/ccfish2/[infra|controllerPoweredByDI]/[\w\/]+/`)
 )
 
 func TrimName(name string) string {

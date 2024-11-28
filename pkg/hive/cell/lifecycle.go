@@ -52,7 +52,7 @@ func (lc *DefaultLifecycle) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	fmt.Println("Lifecycle start...", len(lc.hooks))
+	fmt.Println("Lifecycle start with ", len(lc.hooks), " hooks ")
 	for _, hook := range lc.hooks {
 		fnName, exists := getHookFuncName(hook, true)
 
@@ -62,7 +62,7 @@ func (lc *DefaultLifecycle) Start(ctx context.Context) error {
 			continue
 		}
 
-		fmt.Println("hook function", fnName)
+		fmt.Println("hook function ", fnName)
 		fmt.Println("Executing start hook")
 		t0 := time.Now()
 		if err := hook.Start(ctx); err != nil {
@@ -70,7 +70,7 @@ func (lc *DefaultLifecycle) Start(ctx context.Context) error {
 			return err
 		}
 		d := time.Since(t0)
-		fmt.Println("executed hook after ", d)
+		fmt.Println("hook get executed for ", d)
 		lc.numStarted++
 	}
 	return nil
