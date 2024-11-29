@@ -14,6 +14,7 @@ import (
 	"github.com/ccfish2/infra/pkg/inctimer"
 	"github.com/ccfish2/infra/pkg/lock"
 	"github.com/ccfish2/infra/pkg/spanstat"
+	"github.com/ccfish2/infra/pkg/stream"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -258,5 +259,187 @@ func (jos *jobOneShot) Start(ctx context.Context, wg *sync.WaitGroup, scope cell
 	}
 	if options.shutdowner != nil && jos.shutdownnOnError {
 		options.shutdowner.Shutdown(hive.ShutdownWithError(err))
+	}
+}
+
+type timerOpt func(*jobTimer)
+type TimerFunc func(ctx context.Context) error
+type Trigger interface {
+	_trigger()
+	Trigger()
+}
+
+func NewTrigger() Trigger {
+	return &trigger{make(chan struct{}, 1)}
+}
+
+type trigger struct {
+	c chan struct{}
+}
+
+// Trigger implements Trigger.
+func (t *trigger) Trigger() {
+	select {
+	case t.c <- struct{}{}:
+	default:
+	}
+}
+
+// _trigger implements Trigger.
+func (t *trigger) _trigger() {}
+
+func WithTrigger(tr Trigger) timerOpt {
+	return func(jt *jobTimer) {
+		jt.trigger = tr.(*trigger)
+	}
+}
+
+type jobTimer struct {
+	name     string
+	fn       TimerFunc
+	opts     []timerOpt
+	health   cell.HealthReporter
+	interval time.Duration
+	trigger  *trigger
+}
+
+func (jt *jobTimer) start(ctx context.Context, wg *sync.WaitGroup, scope cell.Scope, options options) {
+	defer wg.Done()
+	for _, opt := range jt.opts {
+		opt(jt)
+	}
+
+	jt.health = cell.GetHealthReporter(scope, jt.name)
+	l := options.logger.WithFields(logrus.Fields{
+		"name":   jt.name,
+		"module": "",
+	})
+	tik := time.NewTicker(jt.interval)
+	defer tik.Stop()
+
+	triggerChan := make(chan struct{})
+	if jt.trigger.c != nil {
+		triggerChan = jt.trigger.c
+	}
+	spansta := spanstat.SpanStat{}
+
+	l.Logger.Debug("start job timer")
+	for {
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-tik.C:
+		case <-triggerChan:
+		}
+
+		l.Debug("timer job finished")
+		spansta.Start()
+		err := jt.fn(ctx)
+
+		tot := spansta.End(true).Total()
+		options.metrics.TimerRunDuration.WithLabelValues(jt.name).Observe(tot.Seconds())
+		spansta.Reset()
+
+		if err == nil {
+			jt.health.OK("job timer job is healthy")
+			l.WithError(err).Error("TIMER JOB ERROR OUT")
+		} else {
+			if errors.Is(err, context.Canceled) {
+				jt.health.Degraded("job timer job degraded", err)
+				options.metrics.JobErrorsTotal.WithLabelValues(jt.name).Inc()
+			}
+		}
+
+		if ctx.Err() != nil {
+			return
+		}
+	}
+}
+
+type ObserverFunc[T any] func(ctx context.Context, event T) error
+type observerOpt[T any] func(*jobObserver[T])
+type jobObserver[T any] struct {
+	name       string
+	fn         ObserverFunc[T]
+	opts       []observerOpt[T]
+	observable stream.Observable[T]
+	health     cell.HealthReporter
+	shutdown   hive.Shutdowner
+}
+
+func Observer[T any](name string, fn ObserverFunc[T], observable stream.Observable[T], opts ...observerOpt[T]) Job {
+	if fn == nil {
+		panic("function could not be nil")
+	}
+	return &jobObserver[T]{
+		name:       name,
+		fn:         fn,
+		opts:       opts,
+		observable: observable,
+	}
+}
+
+func (jo *jobObserver[T]) Start(ctx context.Context, wg *sync.WaitGroup, scope cell.Scope, options options) {
+	defer wg.Done()
+
+	for _, opt := range jo.opts {
+		opt(jo)
+	}
+
+	l := options.logger.WithFields(logrus.Fields{
+		"name": jo.name,
+		"func": internal.FuncNameAndLocation(jo.fn),
+	})
+	jo.health = cell.GetHealthReporter(scope, "observal-job"+jo.name)
+	tik := time.NewTicker(10 * time.Second)
+	defer tik.Stop()
+
+	jo.health.OK("primed")
+	l.Logger.Debug("Observe job started")
+	var msgCount uint64
+	done := make(chan interface{})
+
+	var (
+		spansta = spanstat.SpanStat{}
+		err     error
+	)
+	jo.observable.Observe(ctx, func(t T) {
+
+		spansta.Start()
+		err := jo.fn(ctx, t)
+
+		tot := spansta.End(true).Total()
+		options.metrics.TimerRunDuration.WithLabelValues(jo.name).Observe(tot.Seconds())
+		spansta.Reset()
+
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+
+			}
+			jo.health.Degraded("job timer job error", err)
+			options.metrics.JobErrorsTotal.WithLabelValues(jo.name).Inc()
+			if jo.shutdown != nil {
+				jo.shutdown.Shutdown(hive.ShutdownWithError(err))
+			}
+			return
+		}
+		msgCount += 1
+		select {
+		case <-tik.C:
+			jo.health.OK("observal job OK")
+		}
+
+	}, func(err error) {
+		err = err
+		close(done)
+	})
+	<-done
+	jo.health.Stopped("observer job stopped")
+	if err != nil {
+		l.Debug("observal job err")
+	} else {
+		l.Debug("observal job ok")
 	}
 }

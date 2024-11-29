@@ -15,17 +15,39 @@ type SpanStat struct {
 }
 
 func (s *SpanStat) Start() *SpanStat {
-	panic("rels")
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.spanStart = time.Now()
+	return s
 }
 
 func (s *SpanStat) End(success bool) *SpanStat {
-	panic("rels")
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.end(success)
 }
 
 func (s *SpanStat) Reset() {
-	panic("rels")
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.successDuration = 0
+	s.failureDuration = 0
+}
+
+func (s *SpanStat) end(success bool) *SpanStat {
+	panic("release time")
 }
 
 func (s *SpanStat) Seconds() float64 {
-	panic("release")
+	if !s.spanStart.IsZero() {
+		s.end(true)
+	}
+	tot := s.successDuration + s.failureDuration
+	return tot.Seconds()
+}
+
+func (s *SpanStat) Total() time.Duration {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.successDuration + s.failureDuration
 }
