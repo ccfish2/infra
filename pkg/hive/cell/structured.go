@@ -300,6 +300,17 @@ func (s *subreporterBase) getStatusTreeLocked(nid string) *StatusNode {
 	return nil
 }
 
+func GetSubScope(parent Scope, name string) Scope {
+	if parent == nil {
+		return nil
+	}
+	return createSubScope(parent, name)
+}
+
+func createSubScope(parent Scope, name string) *scope {
+	panic("cell")
+}
+
 type Scope interface {
 	Name() string
 	Close()
@@ -323,4 +334,8 @@ func flushAndClose(rs Scope, reason string) {
 
 func After(d time.Duration) <-chan time.Time {
 	return time.After(d)
+}
+
+func GetHealthReporter(parent Scope, name string) HealthReporter {
+	panic("rels")
 }

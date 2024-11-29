@@ -5,6 +5,17 @@ import (
 	dto "github.com/prometheus/client_model/go"
 )
 
+type Vec[T any] interface {
+	prometheus.Collector
+	WithMetadata
+
+	CurryWith(labels prometheus.Labels) (Vec[T], error)
+	GetMetricWith(labels prometheus.Labels) (T, error)
+	GetMetricWithLabelValues(lvs ...string) (T, error)
+	With(labels prometheus.Labels) T
+	WithLabelValues(lvs ...string) T
+}
+
 type WithMetadata interface {
 	IsEnabled() bool
 	SetEnabled(bool)
@@ -22,10 +33,6 @@ type Opts struct {
 	ConfigName string
 
 	Disabled bool
-}
-
-type Vec[T any] interface {
-	WithLabelValues(lvs ...string) T
 }
 
 type Gauge interface {
@@ -134,4 +141,16 @@ func (g *gauge) SetToCurrentTime() {
 	if g.enabled {
 		g.Gauge.SetToCurrentTime()
 	}
+}
+
+type DeletableVec[T any] interface {
+	Vec[T]
+
+	Delete(labels prometheus.Labels) bool
+
+	DeleteLabelValues(lvs ...string) bool
+
+	DeletePartialMatch(labels prometheus.Labels) int
+
+	Reset()
 }

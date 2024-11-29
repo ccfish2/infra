@@ -41,7 +41,7 @@ type DefaultLifecycle struct {
 func (lc *DefaultLifecycle) Append(hook HookInterface) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	fmt.Println("added hook %v", hook)
+	fmt.Printf("added hook %v \n", internal.FuncNameAndLocation(hook.Start))
 	lc.hooks = append(lc.hooks, augmentedHook{hook, nil})
 }
 
@@ -62,8 +62,7 @@ func (lc *DefaultLifecycle) Start(ctx context.Context) error {
 			continue
 		}
 
-		fmt.Println("hook function ", fnName)
-		fmt.Println("Executing start hook")
+		fmt.Println("Executing start hook ", fnName)
 		t0 := time.Now()
 		if err := hook.Start(ctx); err != nil {
 			fmt.Println("start hook failed ", err)
@@ -94,8 +93,8 @@ func (lc *DefaultLifecycle) Stop(ctx context.Context) error {
 		if !exists {
 			continue
 		}
-		fmt.Println("function", fnName)
-		fmt.Println("Executing stop hook")
+
+		fmt.Println("Executing stop hook ", fnName)
 		t0 := time.Now()
 		if err := hook.Stop(ctx); err != nil {
 			fmt.Printf("Stop hook failed")
