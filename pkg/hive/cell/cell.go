@@ -1,7 +1,13 @@
 package cell
 
 import (
+	"github.com/ccfish2/infra/pkg/logging"
+	"github.com/ccfish2/infra/pkg/logging/logfields"
 	"go.uber.org/dig"
+)
+
+var (
+	log = logging.DefaultLogger.WithField(logfields.LogSubsys, "hive")
 )
 
 type Cell interface {

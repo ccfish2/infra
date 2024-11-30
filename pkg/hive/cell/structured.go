@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -63,6 +64,68 @@ type subReporter struct {
 	closeReconciler func()
 	id              string
 	name            string
+}
+
+const logReporterID = "reporterID"
+
+var errReporterStopped = errors.New("reporter has been stopped")
+
+func (s *subReporter) OK(message string) {
+	if err := s.base.setStatus(s.id, StatusOK, message, nil); err != nil {
+		if errors.Is(err, errReporterStopped) {
+			log.WithError(err).WithField(logReporterID, s.id).Debug("could not set OK status on subreporter")
+		} else {
+			log.WithError(err).WithField(logReporterID, s.id).Warn("could not set OK status on subreporter")
+		}
+		return
+	}
+
+	s.scheduleRealize()
+}
+
+func (s *subReporter) Degraded(message string, err error) {
+	if err := s.base.setStatus(s.id, StatusDegraded, message, err); err != nil {
+		if errors.Is(err, errReporterStopped) {
+			log.WithError(err).WithField(logReporterID, s.id).Debug("could not set degraded status on subreporter")
+		} else {
+			log.WithError(err).WithField(logReporterID, s.id).Warn("could not set degraded status on subreporter")
+		}
+		return
+	}
+	s.scheduleRealize()
+}
+
+func (s *subreporterBase) setStatus(id string, level Level, message string, err error) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.stopped {
+		return fmt.Errorf("reporter tree %s has been stopped", id)
+	}
+
+	if _, ok := s.nodes[id]; !ok {
+		return fmt.Errorf("could not set status for reporter %s: %w", id, errReporterStopped)
+	}
+
+	n := s.nodes[id]
+
+	if n.Level == level && n.Message == message {
+		n.count++
+	} else {
+		n.count = 1
+	}
+
+	n.Level = level
+	n.Message = message
+	n.Error = err
+	return nil
+}
+
+func (s *subReporter) Stopped(reason string) {
+	s.base.Lock()
+	s.base.removeTreeLocked(s.id)
+	s.base.Unlock()
+	s.scheduleRealize()
 }
 
 type scope struct {
@@ -337,5 +400,54 @@ func After(d time.Duration) <-chan time.Time {
 }
 
 func GetHealthReporter(parent Scope, name string) HealthReporter {
-	panic("rels")
+	if parent == nil {
+		return &noopReporter{}
+	}
+	return getSubReporter(parent, name, true)
 }
+
+func getSubReporter(parent Scope, name string, isReporter bool) *subReporter {
+	return scopeFromParent(parent, name, isReporter)
+}
+
+func scopeFromParent(parent Scope, name string, isReporter bool) *subReporter {
+	r := parent.scope()
+	r.base.Lock()
+	defer r.base.Unlock()
+
+	// If such a reporter already exists at this scope, we just return the same reporter
+	// by recreating the subreporter.
+	for cid := range r.base.idToChildren[r.id] {
+		child := r.base.nodes[cid]
+		if child.name == name {
+			r.base.addRefLocked(cid)
+			return &subReporter{
+				base:            r.base,
+				id:              cid,
+				scheduleRealize: r.scheduleRealize,
+				name:            name,
+			}
+		}
+	}
+
+	id := r.base.addChild(r.id, name, isReporter)
+
+	return &subReporter{
+		base:            r.base,
+		id:              id,
+		scheduleRealize: r.scheduleRealize,
+		name:            name,
+	}
+}
+
+func (b *subreporterBase) addRefLocked(id string) {
+	if _, ok := b.nodes[id]; ok {
+		b.nodes[id].refs++
+	}
+}
+
+type noopReporter struct{}
+
+func (s *noopReporter) OK(message string)                  {}
+func (s *noopReporter) Degraded(message string, err error) {}
+func (s *noopReporter) Stopped(message string)             {}

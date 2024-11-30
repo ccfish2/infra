@@ -93,7 +93,7 @@ func (c *controller) runController(params ControllerParams) {
 
 		c.mutex.Lock()
 		c.lastDuration = duration
-		fmt.Printf("Controller func execution time: ", c.lastDuration)
+		fmt.Println("Controller func execution time: ", c.lastDuration)
 
 		if err != nil {
 			if params.Context.Err() != nil {

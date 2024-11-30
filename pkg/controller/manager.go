@@ -149,7 +149,7 @@ func (m *Manager) updateController(name string, params ControllerParams) *manage
 		default:
 		}
 
-		fmt.Printf("Controller update time: ", time.Since(start))
+		fmt.Println("Controller update time: ", time.Since(start))
 	} else {
 		return m.createControllerLocked(name, params)
 	}
