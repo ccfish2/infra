@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -370,8 +371,37 @@ func GetSubScope(parent Scope, name string) Scope {
 	return createSubScope(parent, name)
 }
 
+func (s *subreporterBase) canRemoveTreeLocked(id string) bool {
+	if _, ok := s.nodes[id]; ok {
+		node := s.nodes[id]
+		if (node.isReporter) || s.nodes[id].refs > 0 {
+			return false
+		}
+		for child := range s.idToChildren[id] {
+			if !s.canRemoveTreeLocked(child) {
+				return false
+			}
+		}
+	}
+	// If it does not exist, we assume it's ok to remove (noop).
+	return true
+}
+
+// set finalizer for garbage collection
 func createSubScope(parent Scope, name string) *scope {
-	panic("cell")
+	s := &scope{
+		subReporter: getSubReporter(parent, name, false),
+	}
+	runtime.SetFinalizer(s, func(s *scope) {
+		s.base.Lock()
+		s.base.removeRefLocked(s.id)
+		if s.base.canRemoveTreeLocked(s.id) {
+			s.base.removeTreeLocked(s.id)
+		}
+		s.base.Unlock()
+		runtime.SetFinalizer(s, nil)
+	})
+	return s
 }
 
 type Scope interface {
