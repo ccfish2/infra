@@ -166,3 +166,54 @@ func testOneShotFailBackOff() (bool, error) {
 	}
 	return failed, nil
 }
+
+func TestOneShot_AfterRecover(t *testing.T) {
+	var (
+		g Group
+		i int
+	)
+
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g = r.NewGroup(s)
+
+		g.Add(OneShot("retry after recover", func(ctx context.Context, health cell.HealthReporter) error {
+			defer func() {
+				i++
+			}()
+			if i == 0 {
+				return errors.New("sometimes error")
+			}
+			return nil
+		}, WithRetry(3, workqueue.DefaultControllerRateLimiter())))
+		l.Append(g)
+	})
+
+	if err := h.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	g.(*group).wg.Wait()
+
+	if err := h.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if i != 2 {
+		t.Fatal("supposed to reccover after fail")
+	}
+}
+
+func TestOneShot_ShutDown(t *testing.T) {
+	targetErr := errors.New("target error")
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g := r.NewGroup(s)
+		g.Add(OneShot("shutdown", func(ctx context.Context, health cell.HealthReporter) error {
+			return targetErr
+		}, WithShutdown()))
+		l.Append(g)
+	})
+
+	err := h.Run()
+	if err != nil && !errors.Is(err, targetErr) {
+		t.Fatal("should be the targeted error")
+	}
+}
