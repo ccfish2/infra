@@ -58,7 +58,7 @@ func createCRDs(p params) {
 	p.Lifecycle.Append(cell.Hook{
 		OnStart: func(hc cell.HookContext) error {
 
-			if p.Clientset.IsEnabled() || p.Config.SkipCRDCreation {
+			if !p.Clientset.IsEnabled() || p.Config.SkipCRDCreation {
 				p.Logger.Info("Skipping creation of CRDs")
 				return nil
 			}
