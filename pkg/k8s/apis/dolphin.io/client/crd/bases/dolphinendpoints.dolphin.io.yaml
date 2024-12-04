@@ -1,0 +1,116 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.15.0
+  name: dolphinendpoints.dolphin.io
+spec:
+  group: dolphin.io
+  names:
+    categories:
+    - dolphin
+    kind: DolphinEndpoint
+    listKind: DolphinEndpointList
+    plural: dolphinendpoints
+    shortNames:
+    - dep
+    - dolphinep
+    singular: dolphinendpoint
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: The age of the identity
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: DolphinEndpoint is the Schema for the dolphinendpoints API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DolphinEndpointSpec defines the desired state of DolphinEndpoint
+            properties:
+              addresses:
+                items:
+                  properties:
+                    addresstype:
+                      type: string
+                    ip:
+                      type: string
+                  type: object
+                type: array
+              boot_id:
+                type: string
+              foo:
+                type: string
+              identity:
+                format: int64
+                type: integer
+              ingress_address:
+                properties:
+                  ipv_4:
+                    type: string
+                  ipv_6:
+                    type: string
+                type: object
+              instance_id:
+                type: string
+            type: object
+          status:
+            description: DolphinEndpointStatus defines the observed state of DolphinEndpoint
+            properties:
+              allocation_status:
+                additionalProperties:
+                  properties:
+                    owner:
+                      type: string
+                    reference:
+                      type: string
+                  type: object
+                type: object
+              checksum:
+                format: int64
+                type: integer
+              identity:
+                properties:
+                  id:
+                    description: ID is the numeric identity of the endpoint
+                    format: int64
+                    type: integer
+                  labels:
+                    description: Labels is the list of labels associated with the
+                      identity
+                    items:
+                      type: string
+                    type: array
+                type: object
+              state:
+                additionalProperties:
+                  type: string
+                type: object
+              version:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources: {}

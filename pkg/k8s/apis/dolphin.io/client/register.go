@@ -3,7 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
-	"log"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
@@ -15,6 +18,8 @@ import (
 	k8sconst "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io"
 	k8sconstv1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
 	"github.com/ccfish2/infra/pkg/k8s/client"
+	"github.com/ccfish2/infra/pkg/logging"
+	"github.com/ccfish2/infra/pkg/logging/logfields"
 	"github.com/ccfish2/infra/pkg/versioncheck"
 )
 
@@ -30,6 +35,8 @@ func RegisterCRDs(clientset client.Clientset) error {
 	return nil
 }
 
+var log = logging.DefaultLogger.WithField(logfields.LogSubsys, "k8s")
+
 type CRDList struct {
 	Name     string
 	FullName string
@@ -44,37 +51,19 @@ func CustomResourceDefinitionList() map[string]*CRDList {
 	}
 }
 
-var (
-	crdsDolphinendpoints []byte
-)
-
-func GetPregeneratedCRD(crdName string) apiextensionsv1.CustomResourceDefinition {
-	var (
-		err      error
-		crdBytes []byte
-	)
-
-	switch crdName {
-
-	case DEPCRDName:
-		crdBytes = crdsDolphinendpoints
-
-	default:
-		fmt.Printf("Pregenerated CRD does not exist")
-	}
-
-	dolphinCRD := apiextensionsv1.CustomResourceDefinition{}
-	err = yaml.Unmarshal(crdBytes, &dolphinCRD)
-	if err != nil {
-		fmt.Printf("Error unmarshalling pregenerated CRD")
-	}
-
-	return dolphinCRD
-}
-
-func createCRD(crdVersionedName string, crdMetaName string) func(clientset apiextensionsclient.Interface) error {
+func createCRD(crdfilePath string, crdMetaName string) func(clientset apiextensionsclient.Interface) error {
 	return func(clientset apiextensionsclient.Interface) error {
-		dolphinCRD := GetPregeneratedCRD(crdVersionedName)
+
+		dolphinCRD := apiextensionsv1.CustomResourceDefinition{}
+		crdBytes, err := os.ReadFile(crdfilePath)
+		if err != nil {
+			panic("Failed to retrieve file ")
+
+		}
+		err = yaml.Unmarshal(crdBytes, &dolphinCRD)
+		if err != nil {
+			panic(err)
+		}
 
 		return crdhelpers.CreateUpdateCRD(
 			clientset,
@@ -111,15 +100,38 @@ func constructV1CRD(
 	}
 }
 
+func AllDolphinCRDResourceNames() map[string]string {
+	curP := filepath.Base(".")
+	crdBases := fmt.Sprintf("%s/crd/bases", curP)
+	fSystem := os.DirFS(crdBases)
+	ret := map[string]string{}
+	fs.WalkDir(fSystem, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if path != "." {
+			if strings.HasSuffix(path, ".yaml") {
+				path = strings.ReplaceAll(path, ".yaml", "")
+			}
+			crdBases = fmt.Sprintf("%s/%s", crdBases, path)
+			log.Info("yaml ", path, " ::file ", ret[path])
+		}
+
+		return nil
+	})
+	return ret
+}
+
 func CreateCustomResourceDefinitions(clientset apiextensionsclient.Interface) error {
 	g, _ := errgroup.WithContext(context.Background())
 
 	crds := CustomResourceDefinitionList()
 
-	for _, r := range AllDolphinCRDResourceNames() {
+	for r, filepath := range AllDolphinCRDResourceNames() {
 		if crd, ok := crds[r]; ok {
 			g.Go(func() error {
-				return createCRD(crd.Name, crd.FullName)(clientset)
+				return createCRD(filepath, crd.FullName)(clientset)
 			})
 		} else {
 			log.Fatalf("Unknown resource %s. Please update pkg/k8s/apis/dolphin.io/client to understand this type.", r)
@@ -138,13 +150,6 @@ func agentCRDResourceNames() []string {
 
 func CRDResourceName(crd string) string {
 	return "crd:" + crd
-}
-
-func AllDolphinCRDResourceNames() []string {
-	return append(
-		AgentCRDResourceNames(),
-		CRDResourceName(k8sconstv1.DEPName),
-	)
 }
 
 func AgentCRDResourceNames() []string {
