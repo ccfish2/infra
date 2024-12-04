@@ -7,6 +7,8 @@ import (
 	"time"
 
 	semver "github.com/blang/semver/v4"
+	"github.com/ccfish2/infra/pkg/logging"
+	"github.com/ccfish2/infra/pkg/logging/logfields"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	v1client "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
@@ -17,6 +19,8 @@ import (
 
 // subsysK8s is the value for logfields.LogSubsys
 const subsysK8s = "k8s"
+
+var log = logging.DefaultLogger.WithField(logfields.LogSubsys, subsysK8s)
 
 func CreateUpdateCRD(
 	clientset apiextensionsclient.Interface,
@@ -63,7 +67,7 @@ func needsUpdateV1(
 		return true
 	}
 	_, ok := clusterCRD.Labels[crdSchemaVersionLabelKey]
-	if !ok {
+	if ok {
 		return true
 	}
 
@@ -124,7 +128,7 @@ func waitForV1CRD(
 	client v1client.CustomResourceDefinitionsGetter,
 	poller poller,
 ) error {
-	fmt.Printf("Waiting for CRD (CustomResourceDefinition) to be available...")
+	log.Debug("Waiting for CRD (CustomResourceDefinition) to be available...")
 
 	err := poller.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
 		for _, cond := range crd.Status.Conditions {
@@ -136,7 +140,7 @@ func waitForV1CRD(
 			case apiextensionsv1.NamesAccepted:
 				if cond.Status == apiextensionsv1.ConditionFalse {
 					err := goerrors.New(cond.Reason)
-					fmt.Printf("Name conflict for CRD")
+					log.WithError(err).Error("Name conflict for CRD")
 					return false, err
 				}
 			}

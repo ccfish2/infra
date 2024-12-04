@@ -13,8 +13,7 @@ import (
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:resource:categories={dolphin},singular="dolphinenvoyconfig",path="dolphinenvoyconfigs",scope="Namespaced",shortName={dec}
-// +kubebuilder:printcolumn:JSONPath=".metadata.creationTimestamp",description="The age of the identity",name="Age",type=date
+// +kubebuilder:resource:categories={dolphin},singular="dolphinenvoyconfig",path="dolphinenvoyconfigs",scope="Namespaced",shortName={dec,dolphinec}
 // +kubebuilder:storageversion
 
 type DolphinEnvoyConfig struct {

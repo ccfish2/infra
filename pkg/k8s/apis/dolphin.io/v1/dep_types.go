@@ -7,7 +7,7 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=false
-// +kubebuilder:resource:categories={dolphin},singular="dolphinendpoint",path="dolphinendpoint",scope="Namespaced",shortName={dep}
+// +kubebuilder:resource:categories={dolphin},singular="dolphinendpoint",path="dolphinendpoints",scope="Namespaced",shortName={dep,dolphinep}
 // +kubebuilder:printcolumn:JSONPath=".metadata.creationTimestamp",description="The age of the identity",name="Age",type=date
 // +kubebuilder:storageversion
 
