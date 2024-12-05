@@ -1,5 +1,7 @@
 package logfields
 
 const (
-	LogSubsys = "subsys"
+	LogSubsys  = "subsys"
+	Controller = "controller"
+	Resource   = "resource"
 )

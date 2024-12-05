@@ -14,6 +14,14 @@ const (
 	DEPPluralName     = "dolphinendpoints"
 	DEPKindDefinition = "DolphinEndpoint"
 	DEPName           = DEPPluralName + "." + CustomResourceDefinitionGroup
+
+	DEPSPluralName     = "dolphinendpointslices"
+	DEPSKindDefinition = "DolphinEndpointSlice"
+	DEPSName           = DEPSPluralName + "." + CustomResourceDefinitionGroup
+
+	DECPluralName     = "dolphinenvoyconfigs"
+	DECKindDefinition = "DolphinEnvoyConfig"
+	DECName           = DECPluralName + "." + CustomResourceDefinitionGroup
 )
 
 var SchemeGroupVersion = schema.GroupVersion{

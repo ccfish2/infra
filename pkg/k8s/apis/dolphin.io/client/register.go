@@ -24,7 +24,9 @@ import (
 )
 
 const (
-	DEPCRDName = k8sconstv1.DEPKindDefinition + "/" + k8sconstv1.CustomResourceDefinitionVersion
+	DEPCRDName  = k8sconstv1.DEPKindDefinition + "/" + k8sconstv1.CustomResourceDefinitionVersion
+	DEPSCRDName = k8sconstv1.DEPSKindDefinition + "/" + k8sconstv1.CustomResourceDefinitionVersion
+	DECRDName   = k8sconstv1.DECKindDefinition + "/" + k8sconstv1.CustomResourceDefinitionVersion
 )
 
 func RegisterCRDs(clientset client.Clientset) error {
@@ -47,6 +49,16 @@ func CustomResourceDefinitionList() map[string]*CRDList {
 		CRDResourceName(k8sconstv1.DEPName): {
 			Name:     DEPCRDName,
 			FullName: k8sconstv1.DEPName,
+		},
+
+		CRDResourceName(k8sconstv1.DEPSName): {
+			Name:     DEPSCRDName,
+			FullName: k8sconstv1.DEPSName,
+		},
+
+		CRDResourceName(k8sconstv1.DECName): {
+			Name:     DECRDName,
+			FullName: k8sconstv1.DECName,
 		},
 	}
 }
