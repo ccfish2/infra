@@ -59,6 +59,8 @@ func (p *provider) Info(container) Info {
 	return n
 }
 
+// similar as private variable or methods within OOP
+// the cell is only visible wihtn the module it was created as well as its nested object
 func ProvidePrivate(ctors ...any) Cell {
 	return &provider{ctors: ctors, export: false}
 }

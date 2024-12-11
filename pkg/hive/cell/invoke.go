@@ -65,6 +65,7 @@ func (i *invoker) Info(container) Info {
 	return n
 }
 
+// Cell is construccted using the invoke functions
 func Invoke(funcs ...any) Cell {
 	nameFuncs := []namedFunc{}
 	for _, fn := range funcs {

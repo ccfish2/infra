@@ -429,6 +429,7 @@ func After(d time.Duration) <-chan time.Time {
 	return time.After(d)
 }
 
+// returns a new reporter with gvien name under the parent
 func GetHealthReporter(parent Scope, name string) HealthReporter {
 	if parent == nil {
 		return &noopReporter{}

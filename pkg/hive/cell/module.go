@@ -11,6 +11,9 @@ import (
 	"github.com/ccfish2/infra/pkg/logging/logfields"
 )
 
+// scoped set of cells, with the id, the submodules under the root has hirachy
+// different from Group
+// similar as Java OOP
 func Module(id, title string, cells ...Cell) Cell {
 	validateIDAndTitle(id, title)
 	return &module{id, title, cells}

@@ -1,5 +1,6 @@
 package hive
 
+// stop hive
 type Shutdowner interface {
 	Shutdown(...ShutdownOption)
 }

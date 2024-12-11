@@ -35,6 +35,7 @@ func (d *decorator) Info(c container) Info {
 	return n
 }
 
+// Decorate receives functions and cells and returns Decorator cells
 func Decorate(dtor any, cells ...Cell) Cell {
 	return &decorator{
 		decorator: dtor,
