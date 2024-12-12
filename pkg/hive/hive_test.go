@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/ccfish2/infra/pkg/cidr"
 	"github.com/ccfish2/infra/pkg/hive"
 	"github.com/ccfish2/infra/pkg/hive/cell"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -275,11 +278,11 @@ type StringSliceConfig struct {
 	StringFlag             string
 }
 
-func (StringSliceConfig) Flags(flags *pflag.FlagSet) {
+func (s StringSliceConfig) Flags(flags *pflag.FlagSet) {
 	flags.StringSlice("spaces-flag", nil, "split by spaces via pflag")
 	flags.StringSlice("commas-flag", nil, "split by commas via pflag")
 	flags.StringSlice("spaces-map", nil, "split by spaces via configmap")
-	flags.StringSlice("spaces-map", nil, "split by commas via configmap")
+	flags.StringSlice("commas-map", nil, "split by commas via configmap")
 
 	flags.String("mixed", "", "mixed")
 	flags.String("string-flag", "", "plain string untouched")
@@ -302,15 +305,15 @@ func TestHiveStringSlice(t *testing.T) {
 	hive.RegisterFlags(flags)
 
 	spaces := "foo bar baz"
-	commas := "foo, bar, baz"
+	commas := "foo,bar,baz"
 	expected := []string{"foo", "bar", "baz"}
 
 	flags.Set("spaces-flag", spaces)
 	flags.Set("commas-flag", commas)
 
-	flags.Set("string-flag", "foo, bar, baz")
+	flags.Set("string-flag", "foo,bar,baz")
 
-	flags.Set("mixed", "foo bar, baz")
+	flags.Set("mixed", "foo bar,baz")
 
 	hive.Viper().MergeConfigMap(
 		map[string]any{
@@ -328,5 +331,161 @@ func TestHiveStringSlice(t *testing.T) {
 	assert.ElementsMatch(t, cfg.CommasFlag, expected, "unexpected CommasFlag")
 	assert.ElementsMatch(t, cfg.CommasMap, expected, "unexpected CommasMap")
 	assert.ElementsMatch(t, cfg.Mixed, []string{"foo bar", "baz"}, "unexpected Mixed")
-	assert.Equal(t, cfg.StringFlag, "foo, bar, baz", "unexpected StringFlag")
+	assert.Equal(t, cfg.StringFlag, "foo,bar,baz", "unexpected StringFlag")
+}
+
+type CIDRSliceConfig struct {
+	Foo []*cidr.CIDR
+}
+
+func (CIDRSliceConfig) Flags(flags *pflag.FlagSet) {
+	flags.StringSlice("foo", nil, "foo")
+}
+
+func TestHiveCIDRSlice(t *testing.T) {
+	var cfg CIDRSliceConfig
+	testCell := cell.Module(
+		"test",
+		"Test Module",
+		cell.Config(CIDRSliceConfig{}),
+		cell.Invoke(func(c CIDRSliceConfig) {
+			cfg = c
+		}),
+	)
+	hive := hive.New(testCell)
+
+	flags := pflag.NewFlagSet("", pflag.ContinueOnError)
+	hive.RegisterFlags(flags)
+	flags.Set("foo", "1.2.3.4/24,2001:db8::/64")
+
+	err := hive.Start(context.TODO())
+	require.NoError(t, err, "expected Start to succeed")
+	err = hive.Stop(context.TODO())
+	require.NoError(t, err, "expected Stop to succeed")
+
+	require.Len(t, cfg.Foo, 2)
+	require.Equal(t, cidr.MustParseCIDR("1.2.3.4/24"), cfg.Foo[0], "Config.Foo not set correctly")
+	require.Equal(t, cidr.MustParseCIDR("2001:db8::/64"), cfg.Foo[1], "Config.Foo not set correctly")
+}
+
+type MapConfig struct {
+	Foo map[string]string
+}
+
+func (mf MapConfig) Flags(flags *pflag.FlagSet) {
+	flags.StringToString("foo", nil, "foo")
+}
+func c(t *testing.T) {
+	runnable := func(setter func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper), expected map[string]string) func(t *testing.T) {
+		return func(t *testing.T) {
+			defer os.Unsetenv("DOLPHIN_FOO")
+			var cfg MapConfig
+			testcell := cell.Module(
+				"testcell",
+				"Test Cell",
+				cell.Config(MapConfig{}),
+				cell.Invoke(func(c MapConfig) {
+					cfg = c
+				}),
+			)
+			hive := hive.New(testcell)
+			flags := pflag.NewFlagSet("", pflag.ContinueOnError)
+			hive.RegisterFlags(flags)
+			setter(t, flags, hive.Viper())
+			err := hive.Start(context.Background())
+			require.NoError(t, err)
+
+			err = hive.Stop(context.Background())
+			require.NoError(t, err)
+
+			require.Equal(t, expected, cfg.Foo, "config foo")
+		}
+	}
+
+	t.Run("UNSET", runnable(func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper) {
+	}, map[string]string{}))
+
+	t.Run("UNSET", runnable(func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper) {
+		require.NoError(t, pflag.Set("foo", "foo=bar,barz=qux"))
+		require.NoError(t, pflag.Set("foo", "fred=thud"))
+	}, map[string]string{
+		"foo":  "bar",
+		"barz": "qux",
+		"fred": "thud",
+	}))
+
+}
+
+type BadConfig struct {
+	Bar string
+}
+
+func (b BadConfig) Flags(pflags *pflag.FlagSet) {
+	pflags.String("foo", "foobar", "foo")
+}
+
+func TestHiveBadConfig(t *testing.T) {
+	testCell := cell.Module(
+		"test",
+		"Test Module",
+		cell.Config(BadConfig{}),
+		cell.Invoke(func(c BadConfig) {}),
+	)
+
+	hive := hive.New(testCell)
+
+	err := hive.Start(context.TODO())
+	assert.ErrorContains(t, err, "has invalid keys: foo", "expected 'invalid keys' error")
+	assert.ErrorContains(t, err, "has unset fields: Bar", "expected 'unset fields' error")
+}
+
+type Config struct {
+	Foo string
+	Bar int
+}
+
+// Foo string Bar int
+func (Config) Flags(pflg *pflag.FlagSet) {
+	pflg.String("foo", "hello world", "sets the greeting")
+	pflg.Int("bar", 123, "bar")
+}
+
+// Flags function
+// pass in foo string
+// pass in bar int
+func TestHiveGood(t *testing.T) {
+	// define cfg
+	var cfg Config
+	// creaate a test Cell
+	testCell := cell.Module(
+		"test",
+		"Test Module",
+		cell.Config(Config{}),
+		cell.Invoke(func(c Config) {
+			cfg = c
+		}),
+	)
+
+	// build a hive using the testCell
+	h := hive.New(testCell)
+
+	// create pflag using pflag.ContinueOnError
+	// register the flag with the hive
+	flags := pflag.NewFlagSet("", pflag.ContinueOnError)
+	h.RegisterFlags(flags)
+
+	// Test two ways of setting it
+	// configure the value for foo and bar
+	flags.Set("foo", "test")
+	h.Viper().Set("bar", 13)
+
+	err := h.Start(context.TODO())
+	assert.NoError(t, err, "expected Start to succeed")
+
+	// execute hive.Start, hive.Stop
+	// ensure foo and bar are
+	err = h.Stop(context.TODO())
+	assert.NoError(t, err, "expected stop to succeed")
+	assert.Equal(t, "test", cfg.Foo, "Config.foo not set correctly")
+	assert.Equal(t, 13, cfg.Bar, "Config.bar not set correctly")
 }

@@ -20,3 +20,11 @@ func ParseCIDR(str string) (*CIDR, error) {
 	}
 	return NewCIDR(ipnet), nil
 }
+
+func MustParseCIDR(in string) *CIDR {
+	cidr, err := ParseCIDR(in)
+	if err != nil {
+		return nil
+	}
+	return cidr
+}
