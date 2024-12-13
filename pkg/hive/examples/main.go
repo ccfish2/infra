@@ -16,6 +16,8 @@ var (
 		exampleMetricCell,
 		jobCell,
 		helloHandler,
+		eventCell,
+		eventHandlerCell,
 
 		cell.Invoke(func(Server) {}),
 	)

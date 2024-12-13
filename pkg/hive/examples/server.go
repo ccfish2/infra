@@ -13,10 +13,15 @@ import (
 
 var serverCell = cell.Module(
 	"http-server",
-	"HTTP Server Cell",
+	"Simple HTTP Server",
+
 	cell.Config(defaultServerConfig),
 	cell.Provide(newServer),
 )
+
+//
+// Server API
+//
 
 type Server interface {
 	ListenAddress() string
