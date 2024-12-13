@@ -63,3 +63,15 @@ func Test_HealthReporter(t *testing.T) {
 		assert.Equal(StatusOK, s.Update.Level())
 	}
 }
+
+func TestStatusString(t *testing.T) {
+	un := &StatusNode{
+		LastLevel: StatusOK,
+		Message:   "Status OK",
+	}
+	S := Status{
+		Update:       un,
+		FullModuleID: FullModuleID{"module000"},
+	}
+	assert.Equal(t, "Status OK", S.String())
+}
