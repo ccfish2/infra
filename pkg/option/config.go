@@ -78,6 +78,8 @@ type DaemonConfig struct {
 	IPv6ClusterAllocCIDRBase string
 	IPAMDefaultIPPool        string
 
+	IPAM string
+
 	EnableHostIPRestore  bool
 	EnableEndpointRoutes bool
 
