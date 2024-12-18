@@ -1,6 +1,8 @@
 package lock
 
 import (
+	"sync"
+
 	"github.com/sasha-s/go-deadlock"
 )
 
@@ -19,3 +21,5 @@ type RWMutexDebug struct {
 type MutexDebug struct {
 	deadlock.Mutex
 }
+
+type Map[K comparable, V any] sync.Map
