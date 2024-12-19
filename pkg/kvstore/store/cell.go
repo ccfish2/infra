@@ -6,6 +6,7 @@ var Cell = cell.Module(
 	"kvstore-utils",
 	"Manage kvstore controllers",
 	cell.Provide(NewFactory),
+	cell.Metric(MetricsProvider),
 )
 
 type Factory interface {

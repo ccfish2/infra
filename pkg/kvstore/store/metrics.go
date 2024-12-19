@@ -9,3 +9,7 @@ type Metrics struct {
 	KVStoreSyncErrors           metric.Vec[metric.Counter]
 	KVStoreInitialSyncCompleted metric.Vec[metric.Gauge]
 }
+
+func MetricsProvider() *Metrics {
+	return &Metrics{}
+}
