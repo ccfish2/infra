@@ -50,4 +50,6 @@ const (
 	K8sClientBurst                = 0
 	K8sEnableAPIDiscovery         = false
 	MaxConnectedClusters          = 255
+
+	GopsPortOperator = 9891
 )
