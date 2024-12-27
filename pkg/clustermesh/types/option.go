@@ -26,7 +26,7 @@ var DefaultClusterInfo = ClusterInfo{
 	MaxConnectedServer: defaults.MaxConnectedClusters,
 }
 
-func (def ClusterInfo) Flag(flag *pflag.FlagSet) {
+func (def ClusterInfo) Flags(flag *pflag.FlagSet) {
 	flag.String(OptClusterId, def.Name, "cluster name")
 	flag.Uint32(OptClusterId, def.Id, "cluster iD")
 	flag.Uint32(OptMaxConnectedServer, def.MaxConnectedServer, "max connected servers.")
