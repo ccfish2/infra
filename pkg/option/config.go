@@ -52,12 +52,15 @@ const (
 	IPAllocationTimeout             = "ip-allocation-timeout"
 
 	EndpointStatus = "endpoint-status"
+	GopsPort       = "gops-port"
 
 	EndpointStatusPolicy      = "policy"
 	EndpointStatusHealth      = "health"
 	EndpointStatusControllers = "controllers"
 	EndpointStatusLog         = "log"
 	EndpointStatusState       = "state"
+
+	EnableDolphinEndpointSlice = "enable-dolphin-endpointslice"
 )
 
 func (c *DaemonConfig) DolphinNamespaceName() string {
@@ -93,8 +96,9 @@ type DaemonConfig struct {
 	EnableIPv6NDP bool
 	EnableSCTP    bool
 
-	EnableL7Proxy  bool
-	EndpointStatus map[string]struct{}
+	EnableL7Proxy              bool
+	EndpointStatus             map[string]struct{}
+	EnableDolphinEndpointSlice bool
 
 	DNSMaxIPsPerRestoredRule int
 
