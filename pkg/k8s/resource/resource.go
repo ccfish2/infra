@@ -70,6 +70,7 @@ type ResourceOption func(o *options)
 
 type Resource[T k8sRuntime.Object] interface {
 	stream.Observable[Event[T]]
+	Events(ctx context.Context, opts ...EventsOpts) <-chan Event[T]
 }
 
 func WithMetric(scope string) ResourceOption {
