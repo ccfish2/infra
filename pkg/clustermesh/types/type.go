@@ -22,3 +22,10 @@ func (c ClusterInfo) InitClusterIDMax() error {
 	}
 	return nil
 }
+
+func ValidateClusterID(id uint32) error {
+	if id <= ClusterIDMin || id > ClusterIDMax {
+		return fmt.Errorf("cluster id %d out of range min %d max %d", id, ClusterIDMin, ClusterIDMax)
+	}
+	return nil
+}

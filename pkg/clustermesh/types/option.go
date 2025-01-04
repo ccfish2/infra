@@ -17,7 +17,7 @@ const (
 type ClusterInfo struct {
 	Id                 uint32 `mapstructure:"cluster-id"`
 	Name               string `mapstructure:"cluster-name"`
-	MaxConnectedServer uint32 `mapstructure:"max-connected-servers"`
+	MaxConnectedServer uint32 `mapstructure:"max-connected-server"`
 }
 
 // DefaultClusterInfo represents default cluster info
@@ -46,4 +46,11 @@ func (c ClusterInfo) Validatename() error {
 		return fmt.Errorf("defaults name only apply to the first cluster")
 	}
 	return nil
+}
+
+func (c ClusterInfo) ValidateStrict() error {
+	if err := ValidateClusterID(c.Id); err != nil {
+		return err
+	}
+	return c.Validatename()
 }
