@@ -13,21 +13,23 @@ const (
 	OptMaxConnectedServer = "max-connected-server"
 )
 
+// ClusterInfo groups cluster id and name
 type ClusterInfo struct {
 	Id                 uint32 `mapstructure:"cluster-id"`
 	Name               string `mapstructure:"cluster-name"`
 	MaxConnectedServer uint32 `mapstructure:"max-connected-servers"`
 }
 
-// DefaultClusterInfo
+// DefaultClusterInfo represents default cluster info
 var DefaultClusterInfo = ClusterInfo{
 	Id:                 0,
 	Name:               defaults.ClusterName,
 	MaxConnectedServer: defaults.MaxConnectedClusters,
 }
 
+// implements cell.Flag interface
 func (def ClusterInfo) Flags(flag *pflag.FlagSet) {
-	flag.String(OptClusterId, def.Name, "cluster name")
+	flag.String(OptClusterName, def.Name, "cluster name")
 	flag.Uint32(OptClusterId, def.Id, "cluster iD")
 	flag.Uint32(OptMaxConnectedServer, def.MaxConnectedServer, "max connected servers.")
 }

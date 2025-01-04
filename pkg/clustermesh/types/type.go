@@ -18,7 +18,7 @@ func (c ClusterInfo) InitClusterIDMax() error {
 	case defaults.MaxConnectedClusters, ClusterExt511:
 		ClusterIDMax = c.MaxConnectedServer
 	default:
-		fmt.Errorf("invalid max connected cluster number")
+		return fmt.Errorf("--%s=%d is invalid; supported values are [%d, %d]", OptMaxConnectedServer, c.MaxConnectedServer, defaults.MaxConnectedClusters, ClusterExt511)
 	}
 	return nil
 }
