@@ -93,3 +93,20 @@ func (p *promise[T]) Await(ctx context.Context) (value T, err error) {
 	}
 	return
 }
+
+type wrappedPromise[T any] func(context.Context) (T, error)
+
+// Await implements Promise.
+func (w wrappedPromise[T]) Await(ctx context.Context) (T, error) {
+	return w(ctx)
+}
+
+func MapError[T any](p Promise[T], transform func(error) error) Promise[T] {
+	return wrappedPromise[T](func(ctx context.Context) (out T, err error) {
+		v, err := p.Await(ctx)
+		if err != nil {
+			err = transform(err)
+		}
+		return v, err
+	})
+}

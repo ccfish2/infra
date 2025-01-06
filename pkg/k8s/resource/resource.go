@@ -66,11 +66,26 @@ type resource[T k8sRuntime.Object] struct {
 
 var _ Resource[*corev1.Node] = &resource[*corev1.Node]{}
 
+func (r *resource[T]) Store(ctx context.Context) (Store[T], error) {
+	r.markNeeded()
+	hassynced := func() bool {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		return r.synchronized
+	}
+	cache.WaitForCacheSync(ctx.Done(), hassynced)
+	return promise.MapError(r.storePromise, func(err error) error {
+		r.release()
+		return err
+	}).Await(ctx)
+}
+
 type ResourceOption func(o *options)
 
 type Resource[T k8sRuntime.Object] interface {
 	stream.Observable[Event[T]]
 	Events(ctx context.Context, opts ...EventsOpts) <-chan Event[T]
+	Store(context.Context) (Store[T], error)
 }
 
 func WithMetric(scope string) ResourceOption {
