@@ -23,7 +23,7 @@ type AzureAddress struct {
 type AzureInterface struct {
 	ID            string         `json:"id,omitempty"`
 	Name          string         `json:"name,omitempty"`
-	Mac           string         `json:"mac,omitempty"`
+	MAC           string         `json:"mac,omitempty"`
 	State         string         `json:"state,omitempty"`
 	Addresses     []AzureAddress `json:"addresses,omitempty"`
 	SecurityGroup string         `json:"security-group,omitempty"`

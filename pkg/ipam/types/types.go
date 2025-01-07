@@ -63,7 +63,7 @@ const (
 type PodCIDRMap map[string]PodCIDRMapEntry
 
 type PodCIDRMapEntry struct {
-	Staus PODCIDRStaus `json:"staus,omitempty"`
+	Status PODCIDRStaus `json:"staus,omitempty"`
 }
 
 type OperatorStatus struct {
