@@ -22,6 +22,10 @@ const (
 	DECPluralName     = "dolphinenvoyconfigs"
 	DECKindDefinition = "DolphinEnvoyConfig"
 	DECName           = DECPluralName + "." + CustomResourceDefinitionGroup
+
+	DIDPluralName     = "dolphinidentities"
+	DIDKindDefinition = "DolphinIdentity"
+	DIDName           = DIDPluralName + "." + CustomResourceDefinitionGroup
 )
 
 var SchemeGroupVersion = schema.GroupVersion{
