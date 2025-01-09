@@ -28,6 +28,7 @@ const (
 	K8sHeartbeatTimeout   = "k8s-heartbeat-timeout"
 	K8sEnableAPIDiscovery = "enable-k8s-api-discovery"
 
+	IdentityAllocationModeCRD     = "crd"
 	IdentityAllocationModeKVstore = "kvstore"
 	MonitorAggregationName        = "monitor-aggregation"
 	CTMapEntriesGlobalTCPName     = "bpf-ct-global-tcp-max"
