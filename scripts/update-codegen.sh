@@ -11,7 +11,7 @@ CODEGEN_PKG=$GOPATH/src/github.com/code-generator
 source "${CODEGEN_PKG}/kube_codegen.sh"
 
 TMPDIR=${1}
-PLURAL_EXCEPTIONS="DolphinEndpoints:DolphinEndpoints,DolphinEnvoyConfig:DolphinEnvoyConfigs,DolphinEndpointSlice:DolphinEndpointSlices"
+PLURAL_EXCEPTIONS="DolphinEndpoints:DolphinEndpoints,DolphinEnvoyConfig:DolphinEnvoyConfigs,DolphinEndpointSlice:DolphinEndpointSlices,DolphinIdentity:DolphinIdentities,DolphinNode:DolphinNodes"
 
 kube::codegen::gen_client \
     "./pkg/k8s/apis" \

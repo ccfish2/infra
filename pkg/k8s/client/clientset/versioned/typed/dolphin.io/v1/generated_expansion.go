@@ -22,3 +22,7 @@ type DolphinEndpointExpansion interface{}
 type DolphinEndpointSliceExpansion interface{}
 
 type DolphinEnvoyConfigExpansion interface{}
+
+type DolphinIdentityExpansion interface{}
+
+type DolphinNodeExpansion interface{}

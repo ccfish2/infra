@@ -30,6 +30,8 @@ type DolphinV1Interface interface {
 	DolphinEndpointsGetter
 	DolphinEndpointSlicesGetter
 	DolphinEnvoyConfigsGetter
+	DolphinIdentitiesGetter
+	DolphinNodesGetter
 }
 
 // DolphinV1Client is used to interact with features provided by the dolphin.io group.
@@ -47,6 +49,14 @@ func (c *DolphinV1Client) DolphinEndpointSlices() DolphinEndpointSliceInterface 
 
 func (c *DolphinV1Client) DolphinEnvoyConfigs(namespace string) DolphinEnvoyConfigInterface {
 	return newDolphinEnvoyConfigs(c, namespace)
+}
+
+func (c *DolphinV1Client) DolphinIdentities() DolphinIdentityInterface {
+	return newDolphinIdentities(c)
+}
+
+func (c *DolphinV1Client) DolphinNodes() DolphinNodeInterface {
+	return newDolphinNodes(c)
 }
 
 // NewForConfig creates a new DolphinV1Client for the given config.

@@ -29,6 +29,10 @@ type Interface interface {
 	DolphinEndpointSlices() DolphinEndpointSliceInformer
 	// DolphinEnvoyConfigs returns a DolphinEnvoyConfigInformer.
 	DolphinEnvoyConfigs() DolphinEnvoyConfigInformer
+	// DolphinIdentities returns a DolphinIdentityInformer.
+	DolphinIdentities() DolphinIdentityInformer
+	// DolphinNodes returns a DolphinNodeInformer.
+	DolphinNodes() DolphinNodeInformer
 }
 
 type version struct {
@@ -55,4 +59,14 @@ func (v *version) DolphinEndpointSlices() DolphinEndpointSliceInformer {
 // DolphinEnvoyConfigs returns a DolphinEnvoyConfigInformer.
 func (v *version) DolphinEnvoyConfigs() DolphinEnvoyConfigInformer {
 	return &dolphinEnvoyConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// DolphinIdentities returns a DolphinIdentityInformer.
+func (v *version) DolphinIdentities() DolphinIdentityInformer {
+	return &dolphinIdentityInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// DolphinNodes returns a DolphinNodeInformer.
+func (v *version) DolphinNodes() DolphinNodeInformer {
+	return &dolphinNodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

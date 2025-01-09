@@ -36,3 +36,11 @@ type DolphinEnvoyConfigListerExpansion interface{}
 // DolphinEnvoyConfigNamespaceListerExpansion allows custom methods to be added to
 // DolphinEnvoyConfigNamespaceLister.
 type DolphinEnvoyConfigNamespaceListerExpansion interface{}
+
+// DolphinIdentityListerExpansion allows custom methods to be added to
+// DolphinIdentityLister.
+type DolphinIdentityListerExpansion interface{}
+
+// DolphinNodeListerExpansion allows custom methods to be added to
+// DolphinNodeLister.
+type DolphinNodeListerExpansion interface{}

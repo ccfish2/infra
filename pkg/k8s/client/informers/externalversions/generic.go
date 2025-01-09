@@ -58,6 +58,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dolphin().V1().DolphinEndpointSlices().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("dolphinenvoyconfigs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dolphin().V1().DolphinEnvoyConfigs().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("dolphinidentities"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Dolphin().V1().DolphinIdentities().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("dolphinnodes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Dolphin().V1().DolphinNodes().Informer()}, nil
 
 	}
 
