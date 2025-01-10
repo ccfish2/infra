@@ -34,3 +34,14 @@ func DolphinIdentityResource(lc cell.Lifecycle, cs client.Clientset, opts ...fun
 	)
 	return resource.New[*dolphin_api_v1.DolphinIdentity](lc, lw, resource.WithMetric("DolphinIdentityList")), nil
 }
+
+func DolphinNodeResource(lc cell.Lifecycle, cs client.Clientset, opts ...func(*metav1.ListOptions)) (resource.Resource[*dolphin_api_v1.DolphinNode], error) {
+	if !cs.IsEnabled() {
+		return nil, nil
+	}
+	lw := utils.ListerWatcherWithModifiers(
+		utils.ListerWatcherFromTyped[*dolphin_api_v1.DolphinNodeList](cs.DolphinV1().DolphinNodes()),
+		opts...,
+	)
+	return resource.New[*dolphin_api_v1.DolphinNode](lc, lw, resource.WithMetric("DolphinNode")), nil
+}
