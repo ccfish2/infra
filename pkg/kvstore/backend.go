@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/grpc"
 )
@@ -32,6 +33,18 @@ type KVLocker interface {
 	Comparator() interface{}
 }
 
+type ClusterSizeDependentIntervalFunc func(interval time.Duration) time.Duration
+
+type backendOption struct {
+	description string
+	value       string
+	validate    func(value string) error
+}
+type backendOptions map[string]*backendOption
+
 type ExtraOptions struct {
-	DiaOption []grpc.DiaOption
+	DiaOption                    []grpc.DialOption
+	ClusterSizeDependentInterval ClusterSizeDependentIntervalFunc
+	NoLockQuorumCheck            bool
+	ClusterName                  string
 }
