@@ -3,12 +3,12 @@ package crdhelpers
 import (
 	"context"
 	goerrors "errors"
-	"fmt"
 	"time"
 
 	semver "github.com/blang/semver/v4"
 	"github.com/ccfish2/infra/pkg/logging"
 	"github.com/ccfish2/infra/pkg/logging/logfields"
+	"github.com/sirupsen/logrus"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	v1client "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
@@ -29,14 +29,14 @@ func CreateUpdateCRD(
 	crdSchemaVersionLabelKey string,
 	minCRDSchemaVersion semver.Version,
 ) error {
-
+	scopedlog := log.WithField(" name ", crd.Name)
 	v1CRDClient := clientset.ApiextensionsV1()
 	clusterCRD, err := v1CRDClient.CustomResourceDefinitions().Get(
 		context.TODO(),
 		crd.ObjectMeta.Name,
 		metav1.GetOptions{})
 	if errors.IsNotFound(err) {
-
+		scopedlog.Info("creating CRD ....")
 		clusterCRD, err = v1CRDClient.CustomResourceDefinitions().Create(
 			context.TODO(),
 			crd,
@@ -45,16 +45,23 @@ func CreateUpdateCRD(
 			return nil
 		}
 	}
+
 	if err != nil {
-		return err
-	}
-	if err := updateV1CRD(crd, clusterCRD, v1CRDClient, poller, crdSchemaVersionLabelKey, minCRDSchemaVersion); err != nil {
-		return err
-	}
-	if err := waitForV1CRD(clusterCRD, v1CRDClient, poller); err != nil {
+		scopedlog.Error("Failed to create CRD ", err)
 		return err
 	}
 
+	if err := updateV1CRD(scopedlog, crd, clusterCRD, v1CRDClient, poller, crdSchemaVersionLabelKey, minCRDSchemaVersion); err != nil {
+		scopedlog.Error("Failed to update CRD ", err)
+		return err
+	}
+
+	if err := waitForV1CRD(scopedlog, clusterCRD, v1CRDClient, poller); err != nil {
+		scopedlog.Error("Could not got CRD successfully ", err)
+		return err
+	}
+
+	scopedlog.Info("CRD is installed successfully.")
 	return nil
 }
 
@@ -68,6 +75,7 @@ func needsUpdateV1(
 	}
 	_, ok := clusterCRD.Labels[crdSchemaVersionLabelKey]
 	if ok {
+		// no schema version detected
 		return true
 	}
 
@@ -75,13 +83,16 @@ func needsUpdateV1(
 }
 
 func updateV1CRD(
+	scopedLog *logrus.Entry,
 	crd, clusterCRD *apiextensionsv1.CustomResourceDefinition,
 	client v1client.CustomResourceDefinitionsGetter,
 	poller poller,
 	crdSchemaVersionLabelKey string,
 	minCRDSchemaVersion semver.Version,
 ) error {
+	scopedLog.Info("Checking if CRD needs updating...")
 	if crd.Spec.Versions[0].Schema != nil && needsUpdateV1(clusterCRD, crdSchemaVersionLabelKey, minCRDSchemaVersion) {
+		scopedLog.Info(" Updating CRD ...")
 		err := poller.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
 			var err error
 			clusterCRD, err = client.CustomResourceDefinitions().Get(
@@ -93,7 +104,7 @@ func updateV1CRD(
 			}
 
 			if needsUpdateV1(clusterCRD, crdSchemaVersionLabelKey, minCRDSchemaVersion) {
-
+				scopedLog.Info("CRD validation is different, installing CRD ...")
 				clusterCRD.ObjectMeta.Labels = crd.ObjectMeta.Labels
 				clusterCRD.Spec = crd.Spec
 
@@ -107,6 +118,7 @@ func updateV1CRD(
 				case errors.IsConflict(err): // Occurs as Operators race to update CRDs.
 					return false, nil
 				case err == nil:
+					scopedLog.Info("Updating CRD Validation successfully !")
 					return true, nil
 				}
 
@@ -119,11 +131,12 @@ func updateV1CRD(
 			return err
 		}
 	}
-
+	scopedLog.Info("Updating CRD successfully. ")
 	return nil
 }
 
 func waitForV1CRD(
+	scopedLog *logrus.Entry,
 	crd *apiextensionsv1.CustomResourceDefinition,
 	client v1client.CustomResourceDefinitionsGetter,
 	poller poller,
@@ -156,7 +169,8 @@ func waitForV1CRD(
 		return false, err
 	})
 	if err != nil {
-		return fmt.Errorf("error occurred waiting for CRD: %w", err)
+		scopedLog.Error("error occurred waiting for CRD: ", err)
+		return err
 	}
 
 	return nil
