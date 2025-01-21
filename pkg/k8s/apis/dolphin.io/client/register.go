@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/sync/errgroup"
@@ -34,7 +33,7 @@ const (
 func RegisterCRDs(clientset client.Clientset, scopedlog *logrus.Entry) error {
 	scopedlog.Info("RegisterCRDs ...")
 	if err := CreateCustomResourceDefinitions(clientset, scopedlog); err != nil {
-		return fmt.Errorf("Unable to create custom resource definition: %w", err)
+		return fmt.Errorf("unable to create custom resource definition: %w", err)
 	}
 
 	return nil
@@ -122,9 +121,8 @@ func constructV1CRD(
 	}
 }
 
-func AllDolphinCRDResourceNames() map[string]string {
-	curP := filepath.Base(".")
-	crdBases := fmt.Sprintf("%s/crd/bases", curP)
+func AllDolphinCRDResourceNames(scopedlog *logrus.Entry) map[string]string {
+	crdBases := "/tmp/dolphin"
 	fSystem := os.DirFS(crdBases)
 	ret := map[string]string{}
 	fs.WalkDir(fSystem, ".", func(path string, d fs.DirEntry, err error) error {
@@ -134,14 +132,12 @@ func AllDolphinCRDResourceNames() map[string]string {
 
 		if path != "." {
 			if strings.HasSuffix(path, ".yaml") {
-				path = strings.ReplaceAll(path, ".yaml", "")
+				ret[strings.ReplaceAll(path, ".yaml", "")] = fmt.Sprintf("%s/%s", crdBases, path)
 			}
-			crdBases = fmt.Sprintf("%s/%s", crdBases, path)
-			log.Info("yaml ", path, " ::file ", ret[path])
 		}
-
 		return nil
 	})
+	scopedlog.Info(ret)
 	return ret
 }
 
@@ -150,9 +146,9 @@ func CreateCustomResourceDefinitions(clientset apiextensionsclient.Interface, sc
 	g, _ := errgroup.WithContext(context.Background())
 
 	crds := CustomResourceDefinitionList()
-	scopedlog.Info(" totally, we need creating #", len(crds), "  CRDs ", crds)
+	scopedlog.Info(" totally, we need creating #", len(crds), "  CRDs are ", crds)
 
-	for r, filepath := range AllDolphinCRDResourceNames() {
+	for r, filepath := range AllDolphinCRDResourceNames(scopedlog) {
 		if crd, ok := crds[r]; ok {
 			scopedlog.Info(" Invoking creating CRD ", filepath, " itsname ", crd.FullName)
 			if clientset == nil {
