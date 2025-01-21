@@ -18,17 +18,22 @@ spec:
     singular: dolphinendpointslice
   scope: Cluster
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - description: The age of the identity
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: DolphinEndpointSlice contains a group of CoreDolphinendpoints.
         properties:
           apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
+            description: 
+              'APIVersion defines the versioned schema of this representation of an object.
               Servers should convert recognized schemas to the latest internal value, and
               may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           endpoints:
             description: Endpoints is a list of coreCEPs packed in a DolphinEndpointSlice
@@ -37,19 +42,19 @@ spec:
                 API
               properties:
                 apiVersion:
-                  description: |-
-                    APIVersion defines the versioned schema of this representation of an object.
+                  description: 
+                    'APIVersion defines the versioned schema of this representation of an object.
                     Servers should convert recognized schemas to the latest internal value, and
                     may reject unrecognized values.
-                    More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+                    More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
                   type: string
                 kind:
-                  description: |-
-                    Kind is a string value representing the REST resource this object represents.
+                  description: 
+                    'Kind is a string value representing the REST resource this object represents.
                     Servers may infer this from the endpoint the client submits requests to.
                     Cannot be updated.
                     In CamelCase.
-                    More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                    More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
                   type: string
                 metadata:
                   type: object
@@ -83,8 +88,8 @@ spec:
                       type: string
                   type: object
                 status:
-                  description: DolphinEndpointStatus defines the observed state of
-                    DolphinEndpoint
+                  description: 'DolphinEndpointStatus defines the observed state of
+                    DolphinEndpoint'
                   properties:
                     allocation_status:
                       additionalProperties:
@@ -121,17 +126,17 @@ spec:
               type: object
             type: array
           kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
+            description: 
+              'Kind is a string value representing the REST resource this object represents.
               Servers may infer this from the endpoint the client submits requests to.
               Cannot be updated.
               In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
           namespace:
-            description: |-
+            description: 
               Namespace indicate as DolphinEndpointSlice namespace.
               All the DolphinEndpoints within the same namespace are put together
               in DolphinEndpointSlice.

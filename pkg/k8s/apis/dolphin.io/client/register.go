@@ -73,7 +73,6 @@ func CustomResourceDefinitionList() map[string]*CRDList {
 func createCRD(crdfilePath string, crdMetaName string, scopedlog *logrus.Entry) func(clientset apiextensionsclient.Interface) error {
 	scopedlog.Info("creating CRD ", crdfilePath, " MetaName ", crdMetaName)
 	return func(clientset apiextensionsclient.Interface) error {
-
 		dolphinCRD := apiextensionsv1.CustomResourceDefinition{}
 		crdBytes, err := os.ReadFile(crdfilePath)
 		if err != nil {
@@ -82,10 +81,9 @@ func createCRD(crdfilePath string, crdMetaName string, scopedlog *logrus.Entry) 
 		}
 		err = yaml.Unmarshal(crdBytes, &dolphinCRD)
 		if err != nil {
-			scopedlog.Error(" Failed to unmarshal")
+			scopedlog.Error(" Failed to unmarshal crd file ", crdfilePath)
 			panic(err)
 		}
-
 		return crdhelpers.CreateUpdateCRD(
 			clientset,
 			constructV1CRD(crdMetaName, dolphinCRD),
@@ -142,23 +140,22 @@ func AllDolphinCRDResourceNames(scopedlog *logrus.Entry) map[string]string {
 }
 
 func CreateCustomResourceDefinitions(clientset apiextensionsclient.Interface, scopedlog *logrus.Entry) error {
+	if clientset == nil {
+		panic("client to access k8s api could not be nil.")
+	}
 	scopedlog.Info(" Create CRD ...")
 	g, _ := errgroup.WithContext(context.Background())
 
 	crds := CustomResourceDefinitionList()
 	scopedlog.Info(" totally, we need creating #", len(crds), "  CRDs are ", crds)
-
 	for r, filepath := range AllDolphinCRDResourceNames(scopedlog) {
-		if crd, ok := crds[r]; ok {
+		crd, ok := crds[r]
+		if ok {
 			scopedlog.Info(" Invoking creating CRD ", filepath, " itsname ", crd.FullName)
-			if clientset == nil {
-				panic("client to access k8s api could not be nil.")
-			}
 			g.Go(func() error {
 				return createCRD(filepath, crd.FullName, scopedlog)(clientset)
 			})
 		} else {
-			scopedlog.Error(" Failed to create resource  ", r)
 			log.Fatalf("Unknown resource %s. Please update pkg/k8s/apis/dolphin.io/client to understand this type.", r)
 		}
 	}

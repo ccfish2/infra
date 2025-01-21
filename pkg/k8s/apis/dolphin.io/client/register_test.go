@@ -9,10 +9,36 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiext "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func Test_GetPregeneratedCRD(t *testing.T) {
+func Test_GenerateCRDFromYaml(t *testing.T) {
+	restConf := ctrl.GetConfigOrDie()
+
+	if restConf == nil {
+		panic("failed to retrieve config")
+	}
+
+	httpCli, err := rest.HTTPClientFor(restConf)
+	if err != nil || httpCli == nil {
+		panic("failed to create httpclient")
+	}
+
+	apiextCli, err := apiext.NewForConfigAndClient(restConf, httpCli)
+	if err != nil {
+		panic("failed to create apiextensions-apiserver client")
+	}
+
 	var log = logging.DefaultLogger.WithField(logfields.LogSubsys, "k8s-test")
+	CreateCustomResourceDefinitions(apiextCli, log.WithField("name", "k8sclient"))
+}
+
+func Test_GetPregeneratedCRD(t *testing.T) {
+
+	var log = logging.DefaultLogger.WithField(logfields.LogSubsys, "k8s-test")
+
 	crds := AllDolphinCRDResourceNames(log.WithField("name", "k8s-cli-test"))
 	assert.NotEqual(t, len(crds), 0)
 	expect := CustomResourceDefinitionList()
