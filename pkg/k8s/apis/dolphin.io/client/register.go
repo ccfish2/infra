@@ -72,8 +72,9 @@ func CustomResourceDefinitionList() map[string]*CRDList {
 }
 
 func createCRD(crdfilePath string, crdMetaName string, scopedlog *logrus.Entry) func(clientset apiextensionsclient.Interface) error {
+	scopedlog.Info("creating CRD ", crdfilePath, " MetaName ", crdMetaName)
 	return func(clientset apiextensionsclient.Interface) error {
-		scopedlog.Info("creating CRD ", crdfilePath, " MetaName ", crdMetaName)
+
 		dolphinCRD := apiextensionsv1.CustomResourceDefinition{}
 		crdBytes, err := os.ReadFile(crdfilePath)
 		if err != nil {
@@ -153,8 +154,11 @@ func CreateCustomResourceDefinitions(clientset apiextensionsclient.Interface, sc
 
 	for r, filepath := range AllDolphinCRDResourceNames() {
 		if crd, ok := crds[r]; ok {
+			scopedlog.Info(" Invoking creating CRD ", filepath, " itsname ", crd.FullName)
+			if clientset == nil {
+				panic("client to access k8s api could not be nil.")
+			}
 			g.Go(func() error {
-				scopedlog.Info("invoking creating CRD ", filepath, " itsname ", crd.FullName)
 				return createCRD(filepath, crd.FullName, scopedlog)(clientset)
 			})
 		} else {
