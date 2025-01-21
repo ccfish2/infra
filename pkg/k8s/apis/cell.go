@@ -81,8 +81,8 @@ type registerCRDsFuncOut struct {
 	Func RegisterCRDsFunc `group:"register-crd-funcs"`
 }
 
-func newDolphinGroupCRDs(scopedlog *logrus.Entry) registerCRDsFuncOut {
-	scopedlog.Info("new dolphin group CRDs ...")
+func newDolphinGroupCRDs(scopedlog logrus.FieldLogger) registerCRDsFuncOut {
+	scopedlog.Info(" k8s api new dolphin group CRDs ...")
 	return registerCRDsFuncOut{
 		Func: client.RegisterCRDs,
 	}
