@@ -68,7 +68,13 @@ func init() {
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&DolphinEndpoint{},
-		&DolphinEndpointList{})
+		&DolphinEndpointList{},
+		&DolphinEnvoyConfig{},
+		&DolphinEnvoyConfigList{},
+		&DolphinIdentity{},
+		&DolphinIdentityList{},
+		&DolphinEndpointSlice{},
+		&DolphinEndpointSliceList{})
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
