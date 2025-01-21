@@ -40,7 +40,7 @@ type RegisterCRDsConfig struct {
 
 var defaultConfig = RegisterCRDsConfig{}
 
-type RegisterCRDsFunc func(k8sClient.Clientset) error
+type RegisterCRDsFunc func(k8sClient.Clientset, *logrus.Entry) error
 
 type params struct {
 	cell.In
@@ -64,7 +64,7 @@ func createCRDs(p params) {
 			}
 			p.Logger.Info("Creating CRDs ...")
 			for _, f := range p.RegisterCRDsFuncs {
-				if err := f(p.Clientset); err != nil {
+				if err := f(p.Clientset, p.Logger.WithField("name", "k8s-api")); err != nil {
 					p.Logger.Error("Unalbe to create CRDs ", err)
 					return fmt.Errorf("unable to create CRDs: %w", err)
 				}
@@ -81,7 +81,8 @@ type registerCRDsFuncOut struct {
 	Func RegisterCRDsFunc `group:"register-crd-funcs"`
 }
 
-func newDolphinGroupCRDs() registerCRDsFuncOut {
+func newDolphinGroupCRDs(scopedlog *logrus.Entry) registerCRDsFuncOut {
+	scopedlog.Info("new dolphin group CRDs ...")
 	return registerCRDsFuncOut{
 		Func: client.RegisterCRDs,
 	}

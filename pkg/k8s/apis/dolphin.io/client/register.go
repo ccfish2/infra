@@ -21,6 +21,7 @@ import (
 	"github.com/ccfish2/infra/pkg/logging"
 	"github.com/ccfish2/infra/pkg/logging/logfields"
 	"github.com/ccfish2/infra/pkg/versioncheck"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -30,8 +31,9 @@ const (
 	DIDCRDName  = k8sconstv1.DIDKindDefinition + "/" + k8sconstv1.CustomResourceDefinitionVersion
 )
 
-func RegisterCRDs(clientset client.Clientset) error {
-	if err := CreateCustomResourceDefinitions(clientset); err != nil {
+func RegisterCRDs(clientset client.Clientset, scopedlog *logrus.Entry) error {
+	scopedlog.Info("RegisterCRDs ...")
+	if err := CreateCustomResourceDefinitions(clientset, scopedlog); err != nil {
 		return fmt.Errorf("Unable to create custom resource definition: %w", err)
 	}
 
@@ -69,17 +71,18 @@ func CustomResourceDefinitionList() map[string]*CRDList {
 	}
 }
 
-func createCRD(crdfilePath string, crdMetaName string) func(clientset apiextensionsclient.Interface) error {
+func createCRD(crdfilePath string, crdMetaName string, scopedlog *logrus.Entry) func(clientset apiextensionsclient.Interface) error {
 	return func(clientset apiextensionsclient.Interface) error {
-
+		scopedlog.Info("creating CRD ", crdfilePath, " MetaName ", crdMetaName)
 		dolphinCRD := apiextensionsv1.CustomResourceDefinition{}
 		crdBytes, err := os.ReadFile(crdfilePath)
 		if err != nil {
-			panic("Failed to retrieve file ")
-
+			scopedlog.Error(" Failed to retrieve the CRD file ", crdfilePath)
+			panic(err)
 		}
 		err = yaml.Unmarshal(crdBytes, &dolphinCRD)
 		if err != nil {
+			scopedlog.Error(" Failed to unmarshal")
 			panic(err)
 		}
 
@@ -141,17 +144,21 @@ func AllDolphinCRDResourceNames() map[string]string {
 	return ret
 }
 
-func CreateCustomResourceDefinitions(clientset apiextensionsclient.Interface) error {
+func CreateCustomResourceDefinitions(clientset apiextensionsclient.Interface, scopedlog *logrus.Entry) error {
+	scopedlog.Info(" Create CRD ...")
 	g, _ := errgroup.WithContext(context.Background())
 
 	crds := CustomResourceDefinitionList()
+	scopedlog.Info(" totally, we need creating #", len(crds), "  CRDs ", crds)
 
 	for r, filepath := range AllDolphinCRDResourceNames() {
 		if crd, ok := crds[r]; ok {
 			g.Go(func() error {
-				return createCRD(filepath, crd.FullName)(clientset)
+				scopedlog.Info("invoking creating CRD ", filepath, " itsname ", crd.FullName)
+				return createCRD(filepath, crd.FullName, scopedlog)(clientset)
 			})
 		} else {
+			scopedlog.Error(" Failed to create resource  ", r)
 			log.Fatalf("Unknown resource %s. Please update pkg/k8s/apis/dolphin.io/client to understand this type.", r)
 		}
 	}
