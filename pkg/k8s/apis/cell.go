@@ -62,11 +62,13 @@ func createCRDs(p params) {
 				p.Logger.Info("Skipping creation of CRDs")
 				return nil
 			}
-
+			p.Logger.Info("Creating CRDs ...")
 			for _, f := range p.RegisterCRDsFuncs {
 				if err := f(p.Clientset); err != nil {
+					p.Logger.Error("Unalbe to create CRDs ", err)
 					return fmt.Errorf("unable to create CRDs: %w", err)
 				}
+				p.Logger.Info("Complete register CRDs %v", f)
 			}
 			return nil
 		},
