@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

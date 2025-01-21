@@ -7,7 +7,7 @@ import (
 	"github.com/ccfish2/infra/pkg/logging"
 	"github.com/ccfish2/infra/pkg/logging/logfields"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/rest"
@@ -60,5 +60,26 @@ func Test_GetPregeneratedCRD(t *testing.T) {
 			log.Error("Error unmarshalling pregenerated CRD, ", err)
 		}
 		constructV1CRD(crdMetaName, dolphinCRD)
+	}
+}
+
+func Test_constructV1CRD(t *testing.T) {
+	var log = logging.DefaultLogger.WithField(logfields.LogSubsys, "k8s-test")
+	crds := AllDolphinCRDResourceNames(log.WithField("name", "k8s-cli-test"))
+	assert.NotEqual(t, len(crds), 0)
+
+	expect := CustomResourceDefinitionList()
+	for crd := range crds {
+		if _, ok := expect[crd]; !ok {
+			t.Errorf(crd, " is not expected.")
+		}
+	}
+
+	for crdMetaName, yamlfile := range crds {
+		dolphinapiextcrd, err := ConstructCRDFromYaml(yamlfile, log.WithField("k8s", "construct-crd-test"))
+		if err != nil {
+			t.Error(err)
+		}
+		constructV1CRD(crdMetaName, dolphinapiextcrd)
 	}
 }
