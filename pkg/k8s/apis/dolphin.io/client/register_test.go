@@ -15,6 +15,12 @@ func Test_GetPregeneratedCRD(t *testing.T) {
 	var log = logging.DefaultLogger.WithField(logfields.LogSubsys, "k8s-test")
 	crds := AllDolphinCRDResourceNames(log.WithField("name", "k8s-cli-test"))
 	assert.NotEqual(t, len(crds), 0)
+	expect := CustomResourceDefinitionList()
+	for crd := range crds {
+		if _, ok := expect[crd]; !ok {
+			t.Errorf(crd, " is not expected.")
+		}
+	}
 
 	for crdMetaName, crdfilePath := range crds {
 		dolphinCRD := apiextensionsv1.CustomResourceDefinition{}

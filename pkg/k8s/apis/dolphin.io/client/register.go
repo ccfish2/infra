@@ -132,7 +132,7 @@ func AllDolphinCRDResourceNames(scopedlog *logrus.Entry) map[string]string {
 
 		if path != "." {
 			if strings.HasSuffix(path, ".yaml") {
-				ret[strings.ReplaceAll(path, ".yaml", "")] = fmt.Sprintf("%s/%s", crdBases, path)
+				ret["crd:"+strings.ReplaceAll(path, ".yaml", "")] = fmt.Sprintf("%s/%s", crdBases, path)
 			}
 		}
 		return nil
