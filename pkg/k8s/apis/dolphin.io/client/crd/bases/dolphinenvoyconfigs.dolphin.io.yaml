@@ -21,6 +21,9 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: The age of the identity
+      name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
     name: v1
     schema:
       openAPIV3Schema:
