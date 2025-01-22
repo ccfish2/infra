@@ -1,56 +1,99 @@
 package resource
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 )
 
+// implements cache.Index
 type typedStore[T k8sRuntime.Object] struct {
 	store   cache.Indexer
 	release func()
 }
 
+var _ Store[*corev1.Node] = &typedStore[*corev1.Node]{}
+
 // ByIndex implements Store.
 func (t *typedStore[T]) ByIndex(indexName string, indexedValue string) ([]T, error) {
-	panic("unimplemented")
+	itemAnys, err := t.store.ByIndex(indexName, indexedValue)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]T, len(itemAnys))
+	for _, itm := range itemAnys {
+		res = append(res, itm.(T))
+	}
+	return res, nil
 }
 
 // CacheStore implements Store.
 func (t *typedStore[T]) CacheStore() cache.Store {
-	panic("unimplemented")
+	return t.store
 }
 
 // Get implements Store.
 func (t *typedStore[T]) Get(obj T) (item T, exists bool, err error) {
-	panic("unimplemented")
+	return t.GetByKey(NewKey(obj))
 }
 
 // GetByKey implements Store.
 func (t *typedStore[T]) GetByKey(key Key) (item T, exists bool, err error) {
-	panic("unimplemented")
+	var itemAny any
+	itemAny, exists, err = t.store.GetByKey(key.String())
+	if exists {
+		item = itemAny.(T)
+	}
+	return
 }
 
 // IndexKeys implements Store.
 func (t *typedStore[T]) IndexKeys(indexName string, indexedValue string) ([]string, error) {
-	panic("unimplemented")
+	return t.store.IndexKeys(indexName, indexedValue)
 }
 
 // IterKeys implements Store.
 func (t *typedStore[T]) IterKeys() KeyIter {
-	panic("unimplemented")
+	return &keyIterImpl{
+		keys: t.store.ListKeys(),
+		pos:  -1,
+	}
+}
+
+type keyIterImpl struct {
+	keys []string
+	pos  int
+}
+
+func (it *keyIterImpl) Next() bool {
+	it.pos++
+	return it.pos < len(it.keys)
+}
+
+func (it *keyIterImpl) Key() Key {
+	ns, nm, _ := cache.SplitMetaNamespaceKey(it.keys[it.pos])
+	return Key{
+		Namespace: ns,
+		Name:      nm,
+	}
 }
 
 // List implements Store.
 func (t *typedStore[T]) List() []T {
-	panic("unimplemented")
+	items := t.store.List()
+	res := make([]T, len(items))
+	for _, itm := range items {
+		res = append(res, itm.(T))
+	}
+	return res
 }
 
 // Release implements Store.
 func (t *typedStore[T]) Release() {
-	panic("unimplemented")
+	t.release()
 }
 
-/* similar as cache.Store */
+/* wrapper for cache.Store */
 type Store[T k8sRuntime.Object] interface {
 	List() []T
 	IterKeys() KeyIter
