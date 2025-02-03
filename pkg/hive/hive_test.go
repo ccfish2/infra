@@ -3,8 +3,10 @@ package hive_test
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -375,10 +377,11 @@ type MapConfig struct {
 func (mf MapConfig) Flags(flags *pflag.FlagSet) {
 	flags.StringToString("foo", nil, "foo")
 }
-func c(t *testing.T) {
+func TestHiveStringMapConfig(t *testing.T) {
 	runnable := func(setter func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper), expected map[string]string) func(t *testing.T) {
 		return func(t *testing.T) {
 			defer os.Unsetenv("DOLPHIN_FOO")
+
 			var cfg MapConfig
 			testcell := cell.Module(
 				"testcell",
@@ -388,22 +391,55 @@ func c(t *testing.T) {
 					cfg = c
 				}),
 			)
+
 			hive := hive.New(testcell)
+
 			flags := pflag.NewFlagSet("", pflag.ContinueOnError)
 			hive.RegisterFlags(flags)
+
 			setter(t, flags, hive.Viper())
+
 			err := hive.Start(context.Background())
 			require.NoError(t, err)
 
 			err = hive.Stop(context.Background())
 			require.NoError(t, err)
 
-			require.Equal(t, expected, cfg.Foo, "config foo")
+			require.Equal(t, expected, cfg.Foo, "config.foo not set correctly")
 		}
 	}
 
 	t.Run("UNSET", runnable(func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper) {
 	}, map[string]string{}))
+
+	t.Run("flag-kv", runnable(func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper) {
+		require.NoError(t, flag.Set("foo", "foo=bar, baz=qux"))
+		require.NoError(t, flag.Set("foo", "freq=thud"))
+	}, map[string]string{"foo": "bar", "baz": "qux", "fred": "thud"}))
+
+	t.Run("env-kv", runnable(func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper) {
+		require.NoError(t, os.Setenv("DOLPHIN_FOO", "foo=bar,baz=qux"))
+	}, map[string]string{"foo": "bar", "baz": "qux"}))
+
+	t.Run("env-json", runnable(func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper) {
+		require.NoError(t, os.Setenv("DOLPHIN_FOO", `{"foo":"bar", "baz":"qux"}`))
+	}, map[string]string{"foo": "bar", "baz": "qux"}))
+
+	t.Run("config-yaml", runnable(func(t *testing.T, flags *pflag.FlagSet, vp *viper.Viper) {
+		vp.SetConfigType("yaml")
+		reader := strings.NewReader("foo:\n  foo: bar\n  baz: qux")
+		require.NoError(t, vp.ReadConfig(reader), "Failed Reading config file")
+	}, map[string]string{"foo": "bar", "baz": "qux"}))
+
+	t.Run("config-json", runnable(func(t *testing.T, pflag *pflag.FlagSet, vp *viper.Viper) {
+		vp.SetConfigType("json")
+		reqder := strings.NewReader(`{"foo": {"foo":"bar","baz":"qux"}}`)
+		require.NoError(t, vp.ReadConfig(reqder), "Failed reading config file")
+	}, map[string]string{"foo": "bar", "baz": "qux"}))
+
+	t.Run("cm-json", runnable(func(t *testing.T, pflag *pflag.FlagSet, vp *viper.Viper) {
+		require.NoError(t, vp.MergeConfigMap(map[string]interface{}{"foo": `{"foo":"bar","baz":"qux"}`}))
+	}, map[string]string{"foo": "bar", "baz": "qux"}))
 
 	t.Run("UNSET", runnable(func(t *testing.T, pflag *pflag.FlagSet, viper *viper.Viper) {
 		require.NoError(t, pflag.Set("foo", "foo=bar,barz=qux"))
@@ -420,7 +456,7 @@ type BadConfig struct {
 	Bar string
 }
 
-func (b BadConfig) Flags(pflags *pflag.FlagSet) {
+func (BadConfig) Flags(pflags *pflag.FlagSet) {
 	pflags.String("foo", "foobar", "foo")
 }
 

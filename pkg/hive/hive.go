@@ -32,8 +32,13 @@ const (
 
 	defaultStopTimeout = time.Minute
 
+	// default envprefix is the default prefix for environment variables
+	// e.g flag "foo" can be set with environment variable "DOLPHIN_"
 	defaultEnvPrefix = "DOLPHIN_"
 )
+
+// framework used to build modular applications
+// it implements dependency injection using the ubber dig library
 
 type Hive struct {
 	container                 *dig.Container
@@ -49,6 +54,7 @@ type Hive struct {
 	configOverrides           []any
 }
 
+// reutrns a new Hive that can be run or injected
 func New(cells ...cell.Cell) *Hive {
 	h := &Hive{
 		container:       dig.New(),
@@ -95,6 +101,8 @@ func New(cells ...cell.Cell) *Hive {
 		log.WithError(err).Fatal("Failed to provide health provider")
 	}
 
+	// apply all celss to the container
+	// the registers all constructors
 	for _, cell := range cells {
 		if err := cell.Apply(h.container); err != nil {
 			log.WithError(err).Fatal("Failed to apply cell")
@@ -113,6 +121,7 @@ func New(cells ...cell.Cell) *Hive {
 	return h
 }
 
+// adds all flags within the hive to the given flag set
 func (h *Hive) RegisterFlags(flags *pflag.FlagSet) {
 	h.flags.VisitAll(func(f *pflag.Flag) {
 		if flags.Lookup(f.Name) != nil {
@@ -162,6 +171,8 @@ func AddConfigOverride[Cfg cell.Flagger](h *Hive, override func(*Cfg)) {
 	h.configOverrides = append(h.configOverrides, override)
 }
 
+// populates the cell configuration and runs the hive cells
+// Intterupt signal or call to the Shutdowner.Shutdown() will cause the hive to stop
 func (h *Hive) Run() error {
 	startCtx, cancel := context.WithTimeout(context.Background(), h.startTimeout)
 	defer cancel()
