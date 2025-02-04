@@ -217,3 +217,106 @@ func TestOneShot_ShutDown(t *testing.T) {
 		t.Fatal("should be the targeted error")
 	}
 }
+
+func TestOneShot_RetryFailShutdown(t *testing.T) {
+	// retry three times
+	retrytimes := 3
+	var i int
+	targetErr := errors.New("Always error")
+	// expect would be "Always error"
+	// build the hive using the fixture
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g := r.NewGroup(s)
+
+		g.Add(OneShot(
+			"retry-fail-shutdown", func(ctx context.Context, health cell.HealthReporter) error {
+				defer func() { i++ }()
+				return targetErr
+			}, WithRetry(retrytimes, workqueue.DefaultControllerRateLimiter()), WithShutdown(),
+		))
+		l.Append(g)
+	})
+	// add "retry-fail-shutdown" group into
+	// add the group intot he lifecycle
+
+	// kick off hive
+	err := h.Run()
+	if !errors.Is(err, targetErr) {
+		t.Fail()
+	}
+	// expect always error
+	// i would be the retry + 1
+	if i != retrytimes+1 {
+		t.Fail()
+	}
+}
+
+func TestOneShot_RetryRecoverNoShutdown(t *testing.T) {
+	var (
+		g Group
+		i int
+	)
+
+	started := make(chan interface{})
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g = r.NewGroup(s)
+		g.Add(OneShot("retry recover no shutdown", func(ctx context.Context, health cell.HealthReporter) error {
+
+			if i == 0 {
+				close(started) // run my wild thread
+
+			}
+			i++
+			<-ctx.Done()
+
+			return ctx.Err()
+		}, WithRetry(3, workqueue.DefaultControllerRateLimiter())))
+		l.Append(g)
+	})
+
+	shutdown := make(chan struct{})
+	go func() {
+		<-started
+		h.Shutdown()
+		close(shutdown)
+	}()
+
+	if err := h.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	if i != 1 {
+		t.Fatal("supposed to recover after fail")
+	}
+}
+
+func TestTimer_OnInterval(t *testing.T) {
+	// TestTimer_OnInterval tests the behavior of the Timer.OnInterval function.
+	// It verifies that the provided callback function is called repeatedly at the specified interval.
+	// The test fails if the callback function is not called or if it is called more times than expected.
+	// The test also fails if the callback function takes longer than the specified interval to execute.
+	stop := make(chan struct{})
+	i := 0
+
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g := r.NewGroup(s)
+		g.Add(
+			Timer("on-interval", func(ctx context.Context) error {
+				i++
+				if i == 5 {
+					close(stop)
+				}
+				return nil
+			}, 100*time.Millisecond))
+		l.Append(g)
+	})
+
+	if err := h.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	<-stop
+
+	if err := h.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}

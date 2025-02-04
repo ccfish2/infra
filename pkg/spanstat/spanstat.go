@@ -14,6 +14,11 @@ type SpanStat struct {
 	failureDuration time.Duration
 }
 
+func Start() *SpanStat {
+	s := &SpanStat{}
+	return s.Start()
+}
+
 func (s *SpanStat) Start() *SpanStat {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

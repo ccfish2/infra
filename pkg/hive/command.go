@@ -17,6 +17,7 @@ func (h *Hive) Command() *cobra.Command {
 		TraverseChildren: false,
 	}
 	h.RegisterFlags(cmd.PersistentFlags())
+
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:   "dot-graph",
