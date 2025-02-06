@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -318,5 +319,168 @@ func TestTimer_OnInterval(t *testing.T) {
 
 	if err := h.Stop(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// this test asserts that a timer will run when triggered, even when
+// its interval has not expired
+func TestTimer_Trigger(t *testing.T) {
+	ran := make(chan struct{})
+
+	var i int
+
+	trigger := NewTrigger()
+
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g := r.NewGroup(s)
+
+		g.Add(
+			Timer("on-interval", func(ctx context.Context) error {
+				defer func() { ran <- struct{}{} }()
+
+				i++
+
+				return nil
+			}, 1*time.Hour, WithTrigger(trigger)),
+		)
+
+		l.Append(g)
+	})
+
+	if err := h.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	trigger.Trigger()
+	<-ran
+
+	trigger.Trigger()
+	<-ran
+
+	trigger.Trigger()
+	<-ran
+
+	if err := h.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if i != 3 {
+		t.Fail()
+	}
+}
+
+func TestTimer_DoubleTrigger(t *testing.T) {
+	ran := make(chan struct{})
+
+	var i int
+
+	trigger := NewTrigger()
+
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g := r.NewGroup(s)
+
+		g.Add(
+			Timer("one-interval", func(ctx context.Context) error {
+				defer func(iter int) error {
+					if iter == 0 {
+						close(ran)
+					}
+					return nil
+				}(i)
+
+				i++
+
+				return nil
+			}, 1*time.Hour, WithTrigger(trigger)),
+		)
+
+		l.Append(g)
+	})
+
+	trigger.Trigger()
+	trigger.Trigger()
+	trigger.Trigger()
+
+	if err := h.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	<-ran
+
+	if err := h.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	<-ran
+
+	if err := h.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if i != 1 {
+		t.Fail()
+	}
+}
+
+func TestTimer_ExitOnClose(t *testing.T) {
+	var i int
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g := r.NewGroup(s)
+
+		g.Add(
+			Timer("one-interval", func(ctx context.Context) error {
+				i++
+				return nil
+			}, 1*time.Hour),
+		)
+		l.Append(g)
+	})
+
+	if err := h.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := h.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if i != 0 {
+		t.Fail()
+	}
+}
+
+func TestTimer_ExitOnCloseFnCtx(t *testing.T) {
+	var i int
+	started := make(chan struct{})
+	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
+		g := r.NewGroup(s)
+
+		var closer sync.Once
+
+		g.Add(
+			Timer("exit-on-close-fn-ctx", func(ctx context.Context) error {
+				i++
+				closer.Do(func() { close(started) })
+				<-ctx.Done()
+				return nil
+
+			}, 1*time.Millisecond),
+		)
+
+		l.Append(g)
+	})
+
+	if err := h.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	<-started
+
+	if err := h.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if i != 1 {
+		t.Fail()
 	}
 }

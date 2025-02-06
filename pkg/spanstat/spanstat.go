@@ -4,6 +4,14 @@ import (
 	"time"
 
 	"github.com/ccfish2/infra/pkg/lock"
+	"github.com/ccfish2/infra/pkg/logging"
+	"github.com/ccfish2/infra/pkg/logging/logfields"
+	"github.com/ccfish2/infra/pkg/safetime"
+)
+
+var (
+	subSystem = "spanstat"
+	log       = logging.DefaultLogger.WithField(logfields.LogSubsys, subSystem)
 )
 
 // the time spent between start and stop
@@ -40,7 +48,16 @@ func (s *SpanStat) Reset() {
 }
 
 func (s *SpanStat) end(success bool) *SpanStat {
-	panic("release time")
+	if !s.spanStart.IsZero() {
+		d, _ := safetime.TimeSinceSafe(s.spanStart, log)
+		if success {
+			s.successDuration += d
+		} else {
+			s.failureDuration += d
+		}
+	}
+	s.spanStart = time.Time{}
+	return s
 }
 
 func (s *SpanStat) Seconds() float64 {
