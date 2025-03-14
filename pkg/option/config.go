@@ -131,6 +131,7 @@ type DaemonConfig struct {
 	AllocatorListTimeout  time.Duration
 	EnableICMPRules       bool
 	ExternalClusterIP     bool
+	BGPConfigPath         string
 	EnableBGPControlPlane bool
 
 	EnableK8sNetworkPolicy bool
