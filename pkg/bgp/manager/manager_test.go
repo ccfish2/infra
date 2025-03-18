@@ -3,6 +3,7 @@ package manager
 import (
 	"errors"
 	"time"
+	"github.com/google/go-cmp/cmp"
 )
 
 const (
@@ -16,10 +17,60 @@ var (
 	}
 )
 
-
 func TestManagerNoService(t *testing.T) {
-	panic(" not implemented")
+	svc, __, __, svc2d := mock.GenTestServiceParis()
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	var rr struct {
+		lock.Mutex
+		name  string
+		srvRo *v1.Service
+		eps   mlbk8s.EpsOrSlices
+	}
+
+	mockCtrl := &mock.MockMetalLBController{
+		SetBalancer_: func(name string, srvRo *v1.Service, eps mlbk8s.EpsOrSlices) types.SyncState {
+			rr.Lock()
+			rr.name, rr.srvRo, rr.eps = name, srvRo, eps
+			rr.Unlock()
+			cancel()
+			return types.SyncStateSuccess
+		},
+	}
+
+
+	mockIndexer := &mock.MockIndexer{
+		GetKey_: func(key string) (itm interface{}, exists bool, err error) {
+			return &service, true, nil
+		}
+	}
+
+	mgr := Manager{
+		controller: mockCtrl,
+		queue:      workqueue.New(),
+		Indexer:    mockIndexer,
+	}
+
+	go mgr.Run()
+	err := mgr.OnAddService(&service)
+	if err != nil {
+		panic("failed on Adding Service")
+	}
+	<ctx.Done()
+
+	rr.Lock()
+	defer rr.Unlock()
+
+	if !cmp.Equal(rr.name, svc1d) {
+		t.Fatal(cmp.Diff(rr.name, svc1d))
+	}
+	if rr.srvRo != nil {
+		t.Fatal("expect nil service")
+	}	
+	if !cmp.Equal(rr.eps, emptEps) {
+		t.Fatal(cmp.Diff(rr.eps, emptEps))
+	}
 }
+
 func TestManagerEvent(t *testing.T) {
 	svc, _, svc1d, svc2d := mock.GenTestServiceParis()
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
@@ -65,4 +116,13 @@ func TestManagerEvent(t *testing.T) {
 	}
 	<ctx.Done()
 
+	if !cmp.Equal(rr.name, svc1d) {
+		t.Fatal(cmp.Diff(rr.name, svc1d))
+	}
+	if !cmp.Equal(rr.svcRo, &service) {
+		t.Fatal(cmp.Diff(rr.svcRo, &service))
+	}	
+	if !cmp.Equal(rr.eps, emptEps) {
+		t.Fatal(cmp.Diff(rr.eps, emptEps))
+	}
 }
