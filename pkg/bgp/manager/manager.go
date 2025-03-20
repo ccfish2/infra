@@ -6,6 +6,8 @@ import (
 	"github.com/ccfish2/infra/pkg/k8s/client"
 	metallbk8s "github.com/ccfish2/metalb0110/pkg/k8s"
 	"github.com/ccfish2/metalb0110/pkg/k8s/types"
+	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -37,44 +39,53 @@ func New(ctx context.Context, client client.Clientset, indexer cache.Store) (*Ma
 }
 
 func (m *Manager) run() {
-	l := log.WithFields(logrus.Fields{"component", "manager"})
+	l := log.WithFields(logrus.Fields{
+		"component": "Manager.run",
+	})
 	for {
 		ev, quit := m.queue.Get()
 		if quit {
-			returnn
+			return
 		}
 		st := m.process(ev)
 		switch st {
 		case types.SyncStateSuccess:
 		case types.SyncStateError:
 			m.queue.Add(ev)
-		case types.SyncStateProcessAll:
+		case types.SyncStateReprocessAll:
 			l.Debug("force sync all")
-			m.forceSyncAll()
+			m.forceResync()
 		}
 		m.queue.Done(ev)
 	}
 }
 
-func (m *Manager) process(ev interface{}) types.SyncState {
-	switch k :=  ev.(Type) {
-		case srcEvent:
-			n := string(k)
-			svc, exists, err := m.Indexer.GetByKey(n)
-			if err != nil {
-				return types.SyncStateError
-			}
-			if !exists {
-				return m.reconcile(n, nil)
-			}
-			return m.reconcile(n, svc.(*v1.Service))
-		default:
-			return types.SyncStateSuccess
+func (m *Manager) process(event interface{}) types.SyncState {
+	switch k := event.(type) {
+	case svcEvent:
+		n := string(k) // service namespace/name
 
+		svc, exists, err := m.indexer.GetByKey(n)
+		if err != nil {
+			return types.SyncStateError
+		}
+		if !exists {
+			return m.reconcile(n, nil) // Causes MetalLB to unassign the LB IP
+		}
+		return m.reconcile(n, svc.(*v1.Service))
+	default:
+		log.Debugf("Encountered an unknown key type %T in BGP controller", k)
+		return types.SyncStateSuccess
 	}
 }
 
-func(m *Manager) reconcile(name string, svc *v1.Service) types.SyncState {
+func (m *Manager) forceResync() {
+	for _, k := range m.indexer.ListKeys() {
+		m.queue.Add(svcEvent(k))
+	}
+}
+
+func (m *Manager) reconcile(name string, svc *v1.Service) types.SyncState {
 	l := log.WithFields(logrus.Fields{
 		"component": "manager",
 		"service":   name,
