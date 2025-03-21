@@ -8,10 +8,10 @@ import (
 	bgplog "github.com/ccfish2/infra/pkg/bgp/log"
 	"github.com/ccfish2/infra/pkg/option"
 	"github.com/sirupsen/logrus"
-	metallballoc "go.universe.tf/metallb/pkg/allocator"
-	metallbctl "go.universe.tf/metallb/pkg/controller"
-	"go.universe.tf/metallb/pkg/k8s"
-	"go.universe.tf/metallb/pkg/k8s/types"
+	metallballoc "github.com/ccfish2/metalb0110/pkg/allocator"
+	metallbctl "github.com/ccfish2/metalb0110/pkg/controller"
+	"github.com/ccfish2/metalb0110/pkg/k8s"
+	"github.com/ccfish2/metalb0110/pkg/k8s/types"
 	v1 "k8s.io/api/core/v1"
 )
 

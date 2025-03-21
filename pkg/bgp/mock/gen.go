@@ -2,10 +2,10 @@ package mock
 
 import (
 	v1 "k8s.io/api/core/v1"
-	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	
 	"github.com/ccfish2/infra/pkg/k8s"
-	dolphinv1 "github.com/ccfish2/infra/pkg/k8s/dolphin/v1"
-	metallbspr "go.universe.tf/metallb/pkg/speaker"
+	dolphinv1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	metallbspr "github.com/ccfish2/metalb0110/pkg/speaker"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

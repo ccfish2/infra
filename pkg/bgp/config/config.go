@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/ccfish2/infra/pkg/safeio"
-	metallbcfg "go.universe.tf/metallb/pkg/config"
+	metallbcfg "github.com/ccfish2/metalb0110/pkg/config"
 )
 
 func Parse(r io.Reader) (metallbcfg.Conf, error) {

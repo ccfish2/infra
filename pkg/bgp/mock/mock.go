@@ -1,8 +1,8 @@
 package mock
 
 import (
-	"go.universe.tf/metallb/pkg/k8s/types"
-	metallbspr "go.universe.tf/metallb/pkg/speaker"
+	"github.com/ccfish2/metalb0110/pkg/k8s/types"
+	metallbspr "github.com/ccfish2/metalb0110/pkg/speaker"
 	v1 "k8s.io/api/core/v1"
 )
 
