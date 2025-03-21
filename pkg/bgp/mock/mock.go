@@ -3,7 +3,6 @@ package mock
 import (
 	"github.com/ccfish2/infra/pkg/k8s"
 	"github.com/ccfish2/metalb0110/pkg/bgp"
-	metallbk8s "github.com/ccfish2/metalb0110/pkg/k8s"
 	"github.com/ccfish2/metalb0110/pkg/k8s/types"
 	metallbspr "github.com/ccfish2/metalb0110/pkg/speaker"
 	v1 "k8s.io/api/core/v1"
