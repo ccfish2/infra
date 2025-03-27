@@ -11,7 +11,7 @@ import (
 type Manager struct {
 	controller Controller
 	queue      workqueue.Interface
-	Indexer    cache.Store
+	indexer    cache.Store
 }
 
 func (m *Manager) MarkSynced() {
@@ -26,7 +26,7 @@ func New(ctx context.Context, client client.Clientset, indexer cache.Store) (*Ma
 	mgr := &Manager{
 		controller: crtl,
 		queue:      workqueue.New(),
-		Indexer:    indexer,
+		indexer:    indexer,
 	}
 	go mgr.run()
 	return mgr, nil
