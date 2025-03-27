@@ -1,7 +1,8 @@
 package manager
 
-import v1 ("k8s.io/api/core/v1"
-	"k8s.io/controller-runtime/pkg/cache"
+import (
+	"k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 type srcEvent string

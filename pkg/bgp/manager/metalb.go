@@ -7,11 +7,11 @@ import (
 	bgpconfig "github.com/ccfish2/infra/pkg/bgp/config"
 	bgplog "github.com/ccfish2/infra/pkg/bgp/log"
 	"github.com/ccfish2/infra/pkg/option"
-	"github.com/sirupsen/logrus"
 	metallballoc "github.com/ccfish2/metalb0110/pkg/allocator"
 	metallbctl "github.com/ccfish2/metalb0110/pkg/controller"
 	"github.com/ccfish2/metalb0110/pkg/k8s"
 	"github.com/ccfish2/metalb0110/pkg/k8s/types"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )
 
