@@ -9,7 +9,6 @@ import (
 	bgplog "github.com/ccfish2/infra/pkg/bgp/log"
 	"github.com/ccfish2/infra/pkg/k8s/client"
 	"github.com/ccfish2/infra/pkg/option"
-
 	metallballoc "github.com/ccfish2/metalb0110/pkg/allocator"
 	metallbctl "github.com/ccfish2/metalb0110/pkg/controller"
 	"github.com/ccfish2/metalb0110/pkg/k8s"
