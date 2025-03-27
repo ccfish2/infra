@@ -6,15 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ccfish2/infra/pkg/bgp/mock"
 	"github.com/ccfish2/infra/pkg/lock"
+	metallbk8s "github.com/ccfish2/metalb0110/pkg/k8s"
 	"github.com/ccfish2/metalb0110/pkg/k8s/types"
 	"github.com/google/go-cmp/cmp"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/workqueue"
-
-	metallbk8s "github.com/ccfish2/metalb0110/pkg/k8s"
-	mlbk8s "github.com/ccfish2/metalb0110/pkg/k8s"
 )
 
 const (
@@ -50,11 +47,9 @@ func TestManagerEventNoService(t *testing.T) {
 		},
 	}
 
-	// in this text return false indicating the service does not
-	// exist
 	mockIndexer := &mock.MockIndexer{
-		GetByKey_: func(key string) (item interface{}, exists bool, err error) {
-			return nil, false, nil
+		GetKey_: func(key string) (itm interface{}, exists bool, err error) {
+			return &service, true, nil
 		},
 	}
 
@@ -75,6 +70,7 @@ func TestManagerEventNoService(t *testing.T) {
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		t.Fatal(errTimeout)
 	}
+	<-ctx.Done()
 
 	rr.Lock()
 	defer rr.Unlock()
@@ -83,7 +79,10 @@ func TestManagerEventNoService(t *testing.T) {
 		t.Fatalf(cmp.Diff(rr.name, serviceID.String()))
 	}
 	if rr.srvRo != nil {
-		t.Fatalf("expected srvRo to be nil")
+		t.Fatal("expect nil service")
+	}
+	if !cmp.Equal(rr.eps, emptEps) {
+		t.Fatal(cmp.Diff(rr.eps, emptEps))
 	}
 	if !cmp.Equal(rr.eps, emptyEps) {
 		t.Fatalf(cmp.Diff(rr.eps, serviceID))
@@ -99,14 +98,17 @@ func TestManagerEvent(t *testing.T) {
 	var rr struct {
 		lock.Mutex
 		name  string
-		srvRo *v1.Service
-		eps   mlbk8s.EpsOrSlices
+		svcRo *v1.Service
+		eps   metallbK8s.EpsOrSlices
 	}
 
-	mockCtrl := &mock.MockMetalLBController{
-		SetBalancer_: func(name string, srvRo *v1.Service, eps mlbk8s.EpsOrSlices) types.SyncState {
+	mockCtrl := &mock.MockMetaLBController{
+		SetBalancer_: func(name string, svc *v1.Service, eps metallbK8s.EpsOrSlices) types.SyncState {
 			rr.Lock()
-			rr.name, rr.srvRo, rr.eps = name, srvRo, eps
+
+			rr.name = name
+			rr.svcRo = svc
+			rr.eps = eps
 			rr.Unlock()
 			cancel()
 			return types.SyncStateSuccess
@@ -131,22 +133,16 @@ func TestManagerEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OnAddService call failed: %v", err)
 	}
+	<-ctx.Done()
 
 	<-ctx.Done()
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		t.Fatal(errTimeout)
 	}
-
-	rr.Lock()
-	defer rr.Unlock()
-
-	if !cmp.Equal(rr.name, serviceID.String()) {
-		t.Fatalf(cmp.Diff(rr.name, serviceID.String()))
+	if !cmp.Equal(rr.svcRo, &service) {
+		t.Fatal(cmp.Diff(rr.svcRo, &service))
 	}
-	if !cmp.Equal(rr.srvRo, &v1Service) {
-		t.Fatalf(cmp.Diff(rr.srvRo, &v1Service))
-	}
-	if !cmp.Equal(rr.eps, emptyEps) {
-		t.Fatalf(cmp.Diff(rr.eps, emptyEps))
+	if !cmp.Equal(rr.eps, emptEps) {
+		t.Fatal(cmp.Diff(rr.eps, emptEps))
 	}
 }

@@ -22,6 +22,9 @@ func GenTestServiceParis() (v1.Service, v1.Service, metallbspr.Service, k8s.Serv
 		Namespace:       "TestNamespace",
 		ResourceVersion: "TestResourceVersion",
 	}
+	ing := v1.LoadBalancerIngress{
+		{IP: IP},
+	}
 	var ing v1.LoadBalancerIngress
 	lbStatus := v1.LoadBalancerStatus{
 		Ingress: []v1.LoadBalancerIngress{ing},
@@ -37,12 +40,14 @@ func GenTestServiceParis() (v1.Service, v1.Service, metallbspr.Service, k8s.Serv
 	metallbSvc := metallbspr.Service{
 		Type:          string(spec.Type),
 		TrafficPolicy: string(spec.ExternalTrafficPolicy),
-		Ingress:       nil,
+		Ingress: dolphinv1.LoadBalancerIngress{
+			{IP: ingress[0].IP},
+		},
 	}
 	V1sERVICE := v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "TestName",
-			Namespace:       "TestNamespace",
+		objectMeta: metav1.ObjectMeta{
+			name:            "TestName",
+			namespace:       "TestNamespace",
 			ResourceVersion: "TestResourceVersion",
 		},
 		Spec: v1.ServiceSpec{
@@ -60,8 +65,8 @@ func GenTestServiceParis() (v1.Service, v1.Service, metallbspr.Service, k8s.Serv
 	}
 
 	serviceiD := k8s.ServiceID{
-		// name:      V1sERVICE.name,
-		// namespace: V1sERVICE.namespace,
+		name:      V1sERVICE.name,
+		namespace: V1sERVICE.namespace,
 	}
 	return svc, V1sERVICE, metallbSvc, serviceiD
 }

@@ -27,10 +27,17 @@ type metalLBController struct {
 	logger *bgplog.Logger
 }
 
+<<<<<<< HEAD
 func newMetalLBController(ctx context.Context, cs client.Clientset) (Controller, error) {
 	logger := &bgplog.Logger{Entry: log}
 	c := &metallbctl.Controller{
 		Client: bgpk8s.New(cs, logger.Logger),
+=======
+func NewMetaLBController(ctx context.Context, cs client.Clientset) (Controller, error) {
+	logger := &bgplog.Logger{Entry: log}
+	c := &metallbctl.Controller{
+		Client: bgpk8s.New(logger.Logger, cs),
+>>>>>>> 4c5ccb4 (Fixing error introduced by importing)
 		IPs:    metallballoc.New(),
 	}
 
@@ -44,12 +51,17 @@ func newMetalLBController(ctx context.Context, cs client.Clientset) (Controller,
 	if err != nil {
 		return nil, err
 	}
+<<<<<<< HEAD
 	c.SetConfig(logger, config)
 
 	return &metalLBController{
 		c,
 		logger,
 	}, nil
+=======
+	c.SetConfig(logger, &cfg)
+	return &metalLBController{c, logger}, nil
+>>>>>>> 4c5ccb4 (Fixing error introduced by importing)
 }
 
 func (c *metalLBController) SetBalancer(name string, srvRo *v1.Service, eps k8s.EpsOrSlices) types.SyncState {

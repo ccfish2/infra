@@ -1,65 +1,13 @@
 package mock
 
 import (
-	"github.com/ccfish2/infra/pkg/k8s"
-	"github.com/ccfish2/metalb0110/pkg/bgp"
+	metallbk8s "github.com/ccfish2/metalb0110/pkg/k8s"
 	"github.com/ccfish2/metalb0110/pkg/k8s/types"
-	metallbspr "github.com/ccfish2/metalb0110/pkg/speaker"
 	v1 "k8s.io/api/core/v1"
 )
 
-type MockMetalLBSpeaker struct {
-	SetService_       func(name string, svc *metallbspr.Service, eps *metallbspr.Endpoints) types.SyncState
-	SetNodeLabels_    func(labels map[string]string) types.SyncState
-	PeerSession_      func() []metallbspr.Session
-	GetBGPController_ func() *metallbspr.BGPController
-}
-
-func (m *MockMetalLBSpeaker) SetService(name string, svc *metallbspr.Service, eps *metallbspr.Endpoints) types.SyncState {
-	return m.SetService_(name, svc, eps)
-}
-
-func (m *MockMetalLBSpeaker) SetNodeLabels(labels map[string]string) types.SyncState {
-	return m.SetNodeLabels_(labels)
-}
-
-func (m *MockMetalLBSpeaker) PeerSessions() []metallbspr.Session {
-	return m.PeerSession_()
-}
-
-func (m *MockMetalLBSpeaker) GetBGPController() *metallbspr.BGPController {
-	return m.GetBGPController_()
-}
-
-// MockEndpointGetter implements the method set for obtaining th endpoints
-// of a Service.
-type MockEndpointGetter struct {
-	GetEndpointsOfService_ func(svcID k8s.ServiceID) *k8s.Endpoints
-}
-
-func (m *MockEndpointGetter) GetEndpointsOfService(svcID k8s.ServiceID) *k8s.Endpoints {
-	return m.GetEndpointsOfService_(svcID)
-}
-
-// MockSession implements the metallbspr.Session interface and is useful
-// when utilizing the PeerSession() method of a MockMetalLBSpeaker.
-type MockSession struct {
-	Set_ func(advs ...*bgp.Advertisement) error
-}
-
-func (m *MockSession) Set(advs ...*bgp.Advertisement) error {
-	return m.Set_(advs...)
-}
-
-// Close is a no-op
-func (m *MockSession) Close() error {
-	return nil
-}
-
-// MockMetalLBController implements the manager.Controller interface by delegating to
-// a set of functions defined during test.
-type MockMetalLBController struct {
-	SetBalancer_ func(name string, srvRo *v1.Service, eps metallbk8s.EpsOrSlices) types.SyncState
+type MockMetaLBController struct {
+	SetBalancer_ func(name string, svc *v1.Service, eps metallbk8s.EpsOrSlices) types.SyncState
 	MarkSynced_  func()
 }
 
