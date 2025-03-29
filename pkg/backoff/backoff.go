@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ccfish2/infra/pkg/rand"
+	"github.com/google/uuid"
 )
 
 var (
@@ -43,4 +44,28 @@ func CalculateDuration(min, max time.Duration, factor float64, jitter bool, fail
 	}
 
 	return time.Duration(t)
+}
+
+func (b *Exponential) Duration(attempt int) time.Duration {
+	if b.Name == "" {
+		b.Name = uuid.New().String()
+	}
+	min := time.Duration(1) * time.Second
+	if b.Min != time.Duration(0) {
+		min = b.Min
+	}
+
+	factor := float64(2)
+	if b.Factor != float64(0) {
+		factor = b.Factor
+	}
+
+	t := CalculateDuration(min, b.Max, factor, b.Jitter, attempt)
+	if b.NodeManager != nil {
+		t = b.NodeManager.ClusterSizeDependantInterval(t)
+	}
+	if b.Max != time.Duration(0) && t > b.Max {
+		t = b.Max
+	}
+	return t
 }
