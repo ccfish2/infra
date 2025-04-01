@@ -13,12 +13,14 @@ import (
 
 	"github.com/sirupsen/logrus"
 	apiext_clientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apiext_fake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/connrotation"
@@ -26,6 +28,7 @@ import (
 	"github.com/ccfish2/infra/pkg/controller"
 	"github.com/ccfish2/infra/pkg/hive/cell"
 	dolphin_clientset "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned"
+	dolphin_fake "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/fake"
 	k8smetrics "github.com/ccfish2/infra/pkg/k8s/metrics"
 )
 
@@ -321,4 +324,55 @@ func setConfig(config *rest.Config, userAgent string, qps float32, burst int) {
 	if burst != 0 {
 		config.Burst = burst
 	}
+}
+
+type (
+	KubernetesFakeClientset = fake.Clientset
+	DolphinFakeClientset    = dolphin_fake.Clientset
+	APIExtFakeClientset     = apiext_fake.Clientset
+)
+
+type FakeClientset struct {
+	disabled bool
+
+	*KubernetesFakeClientset
+	*DolphinFakeClientset
+	*APIExtFakeClientset
+	clientsetGetters
+
+	enabled bool
+}
+
+var _ Clientset = &FakeClientset{}
+
+func (c *FakeClientset) Discovery() discovery.DiscoveryInterface {
+	return c.KubernetesFakeClientset.Discovery()
+}
+
+func (c *FakeClientset) IsEnabled() bool {
+	return !c.disabled
+}
+
+func (c *FakeClientset) Disable() {
+	c.disabled = true
+}
+
+func (c *FakeClientset) Config() Config {
+	return Config{}
+}
+
+func (c *FakeClientset) RestConfig() *rest.Config {
+	return &rest.Config{}
+}
+
+func NewFakeClientset() (*FakeClientset, Clientset) {
+	client := FakeClientset{
+
+		DolphinFakeClientset:    dolphin_fake.NewSimpleClientset(),
+		APIExtFakeClientset:     apiext_fake.NewSimpleClientset(),
+		KubernetesFakeClientset: fake.NewSimpleClientset(),
+		enabled:                 true,
+	}
+	client.clientsetGetters = clientsetGetters{&client}
+	return &client, &client
 }
