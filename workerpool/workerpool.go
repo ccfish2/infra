@@ -68,6 +68,7 @@ func (wp *WorkerPool) Submit(id string, f func(context.Context) error) error {
 
 func (wp *WorkerPool) Drain() ([]Task, error) {
 	wp.mu.Lock()
+
 	if wp.closed {
 		wp.mu.Unlock()
 		return nil, errClosed
@@ -80,7 +81,6 @@ func (wp *WorkerPool) Drain() ([]Task, error) {
 	wp.mu.Unlock()
 
 	wp.wg.Wait()
-
 	res := wp.results
 	wp.results = nil
 
@@ -104,7 +104,6 @@ func (wp *WorkerPool) Close() error {
 	close(wp.tasks)
 	wp.wg.Wait()
 
-	<-wp.workers
 	return nil
 }
 func (wp *WorkerPool) run(ctx context.Context) {
