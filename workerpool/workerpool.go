@@ -123,7 +123,6 @@ func (wp *WorkerPool) run(ctx context.Context) {
 
 			<-wp.workers
 		}()
-
 	}
 	close(wp.workers)
 }
