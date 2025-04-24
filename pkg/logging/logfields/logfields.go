@@ -13,4 +13,7 @@ const (
 	IPMask  = "ipMask"
 	IPv4    = "ipv4"
 	IPv6    = "ipv6"
+
+	Ingress      = "ingress"
+	IngressClass = "ingressClass"
 )
