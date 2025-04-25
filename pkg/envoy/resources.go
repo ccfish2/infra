@@ -23,13 +23,13 @@ const (
 	SecretTypeURL = "type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.Secret"
 
 	// NetworkPolicyTypeURL is the type URL of NetworkPolicy resources.
-	NetworkPolicyTypeURL = "type.googleapis.com/cilium.NetworkPolicy"
+	NetworkPolicyTypeURL = "type.googleapis.com/dolphin.NetworkPolicy"
 
 	// NetworkPolicyHostsTypeURL is the type URL of NetworkPolicyHosts resources.
-	NetworkPolicyHostsTypeURL = "type.googleapis.com/cilium.NetworkPolicyHosts"
+	NetworkPolicyHostsTypeURL = "type.googleapis.com/dolphin.NetworkPolicyHosts"
 
 	// HealthCheckSinkPipeTypeURL is the type URL of NetworkPolicyHosts resources.
-	HealthCheckSinkPipeTypeURL = "type.googleapis.com/cilium.health_check.event_sink.pipe"
+	HealthCheckSinkPipeTypeURL = "type.googleapis.com/dolphin.health_check.event_sink.pipe"
 
 	// DownstreamTlsContextURL is the type URL of DownstreamTlsContext
 	DownstreamTlsContextURL = "type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext"
