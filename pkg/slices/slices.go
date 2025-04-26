@@ -2,6 +2,7 @@ package slices
 
 import (
 	"slices"
+	"sort"
 
 	"golang.org/x/exp/constraints"
 )
@@ -42,5 +43,17 @@ func Unique[S ~[]T, T comparable](s S) S {
 }
 
 func SortedUniqs[S ~[]T, T constraints.Ordered](s S) S {
+	return slices.Compact(s)
+}
+
+// sorts and dedup the input slice in place.
+func SortedUnique[S ~[]T, T constraints.Ordered](s S) S {
+	if len(s) < 2 {
+		return s
+	}
+
+	sort.Slice(s, func(i, j int) bool {
+		return s[i] < s[j]
+	})
 	return slices.Compact(s)
 }
