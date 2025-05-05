@@ -58,6 +58,7 @@ spec:
               resources:
                 items:
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               services:
                 items:
