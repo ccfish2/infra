@@ -29,8 +29,8 @@ func TestPProfSrv(t *testing.T) {
 	if err := h.Start(context.Background()); err != nil {
 		t.Fatalf("failed to start h, %v", err)
 	}
-	if testSrv == nil {
-		t.Fatalf("failed to init server object")
+	if testSrv != nil {
+		t.Fatalf("listener unexpectedly started on port %d", testSrv.Port())
 	}
 	if err := h.Stop(context.Background()); err != nil {
 		t.Fatalf("failed to stop %v", err)
