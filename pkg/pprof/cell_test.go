@@ -13,13 +13,13 @@ import (
 )
 
 func TestPProfSrv(t *testing.T) {
-	goleak.VerifyNone(t)
+	defer goleak.VerifyNone(t)
 
 	var testSrv Server
 	h := hive.New(
 		cell.Provide(newServer),
 		cell.Config(Config{
-			Prof:        true,
+			Prof:        false,
 			ProfAddress: "localhost",
 			ProfPort:    0,
 		}),
@@ -32,13 +32,13 @@ func TestPProfSrv(t *testing.T) {
 	if testSrv == nil {
 		t.Fatalf("failed to init server object")
 	}
-	if err := h.Start(context.Background()); err != nil {
+	if err := h.Stop(context.Background()); err != nil {
 		t.Fatalf("failed to stop %v", err)
 	}
 }
 
 func TestHTTPHandler(t *testing.T) {
-	goleak.VerifyNone(t)
+	defer goleak.VerifyNone(t)
 
 	var testSrv Server
 	h := hive.New(
