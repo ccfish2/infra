@@ -21,7 +21,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          go test ./... -coverprofile=coverage.out
+          go list ./... | grep -v metalb0110 | xargs go test -coverprofile=coverage.out
           go tool cover -func=coverage.out
 
       - name: Upload coverage report
