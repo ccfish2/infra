@@ -3,6 +3,8 @@ package config
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const yaml = `---
@@ -30,8 +32,8 @@ func Test_Parse(t *testing.T) {
 		t.Fatalf("failed to parse json: %v", err)
 	}
 
-	_, err = Parse(strings.NewReader(`{"JSON":"RANDOM"}`))
-	if err != nil {
-		t.Fatalf("expected error for invalid JSON, got: %v", err)
-	}
+	cfg, err := Parse(strings.NewReader(`{"json":"random"}`))
+	assert.Equal(t, true, strings.HasPrefix(err.Error(), "failed to read MetalLB config:"))
+	assert.Nil(t, cfg)
+
 }
