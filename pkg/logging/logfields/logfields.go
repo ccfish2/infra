@@ -7,4 +7,15 @@ const (
 
 	Path = "file-path"
 	Line = "line"
+
+	Address = "address"
+	IPAddr  = "ipAddr"
+	IPMask  = "ipMask"
+	IPv4    = "ipv4"
+	IPv6    = "ipv6"
+
+	Ingress      = "ingress"
+	IngressClass = "ingressClass"
+
+	ServiceType = "svcType"
 )

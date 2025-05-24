@@ -1,9 +1,16 @@
 package manager
 
 import (
+	"context"
 	"errors"
+	"testing"
 	"time"
+
+	"github.com/ccfish2/infra/pkg/lock"
+	"github.com/ccfish2/metalb0110/pkg/k8s/types"
 	"github.com/google/go-cmp/cmp"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/util/workqueue"
 )
 
 const (
@@ -37,17 +44,16 @@ func TestManagerNoService(t *testing.T) {
 		},
 	}
 
-
 	mockIndexer := &mock.MockIndexer{
 		GetKey_: func(key string) (itm interface{}, exists bool, err error) {
 			return &service, true, nil
-		}
+		},
 	}
 
 	mgr := Manager{
 		controller: mockCtrl,
 		queue:      workqueue.New(),
-		Indexer:    mockIndexer,
+		indexer:    mockIndexer,
 	}
 
 	go mgr.Run()
@@ -55,7 +61,7 @@ func TestManagerNoService(t *testing.T) {
 	if err != nil {
 		panic("failed on Adding Service")
 	}
-	<ctx.Done()
+	<-ctx.Done()
 
 	rr.Lock()
 	defer rr.Unlock()
@@ -65,7 +71,7 @@ func TestManagerNoService(t *testing.T) {
 	}
 	if rr.srvRo != nil {
 		t.Fatal("expect nil service")
-	}	
+	}
 	if !cmp.Equal(rr.eps, emptEps) {
 		t.Fatal(cmp.Diff(rr.eps, emptEps))
 	}
@@ -75,38 +81,36 @@ func TestManagerEvent(t *testing.T) {
 	svc, _, svc1d, svc2d := mock.GenTestServiceParis()
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 
-	var rr struct{
+	var rr struct {
 		lock.Mutex
-		name string 
+		name  string
 		svcRo *v1.Service
-		eps metallbK8s.EpsOrSlices
+		eps   metallbK8s.EpsOrSlices
 	}
-
 
 	mockCtrl := &mock.MockMetaLBController{
 		SetBalancer_: func(name string, svc *v1.Service, eps metallbK8s.EpsOrSlices) types.SyncState {
 			rr.Lock()
-			
+
 			rr.name = name
 			rr.svcRo = svc
 			rr.eps = eps
 			rr.Unlock()
 			cancel()
 			return types.SyncStateSuccess
-		}	
+		},
 	}
-
 
 	mockIndexer := &mock.MockIndexer{
 		GetKey_: func(key string) (itm interface{}, exists bool, err error) {
 			return &service, true, nil
-		}
+		},
 	}
 
 	mgr := Manager{
 		controller: mockCtrl,
 		queue:      workqueue.New(),
-		Indexer:    mockIndexer,
+		indexer:    mockIndexer,
 	}
 
 	go mgr.Run()
@@ -114,14 +118,14 @@ func TestManagerEvent(t *testing.T) {
 	if err != nil {
 		panic("failed on Adding Service")
 	}
-	<ctx.Done()
+	<-ctx.Done()
 
 	if !cmp.Equal(rr.name, svc1d) {
 		t.Fatal(cmp.Diff(rr.name, svc1d))
 	}
 	if !cmp.Equal(rr.svcRo, &service) {
 		t.Fatal(cmp.Diff(rr.svcRo, &service))
-	}	
+	}
 	if !cmp.Equal(rr.eps, emptEps) {
 		t.Fatal(cmp.Diff(rr.eps, emptEps))
 	}

@@ -73,5 +73,6 @@ func TestStatusString(t *testing.T) {
 		Update:       un,
 		FullModuleID: FullModuleID{"module000"},
 	}
-	assert.Equal(t, "Status OK", S.String())
+	assert.Equal(t, "Status OK", S.Update.String())
+	assert.Equal(t, "module000", S.FullModuleID.String())
 }

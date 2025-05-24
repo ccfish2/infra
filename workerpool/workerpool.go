@@ -27,6 +27,7 @@ type WorkerPool struct {
 func New(workers int) *WorkerPool {
 	return NewWithContext(context.Background(), workers)
 }
+
 func NewWithContext(ctx context.Context, workers int) *WorkerPool {
 	if workers < 0 {
 		panic(fmt.Errorf("workerpool: workers must be >= 0, got %d", workers))
@@ -67,6 +68,7 @@ func (wp *WorkerPool) Submit(id string, f func(context.Context) error) error {
 
 func (wp *WorkerPool) Drain() ([]Task, error) {
 	wp.mu.Lock()
+
 	if wp.closed {
 		wp.mu.Unlock()
 		return nil, errClosed
@@ -79,7 +81,6 @@ func (wp *WorkerPool) Drain() ([]Task, error) {
 	wp.mu.Unlock()
 
 	wp.wg.Wait()
-
 	res := wp.results
 	wp.results = nil
 
@@ -103,21 +104,23 @@ func (wp *WorkerPool) Close() error {
 	close(wp.tasks)
 	wp.wg.Wait()
 
-	<-wp.workers
 	return nil
 }
-
 func (wp *WorkerPool) run(ctx context.Context) {
 	for t := range wp.tasks {
 		t := t
-		result := taskResult{id: t.id}
-		wp.results = append(wp.results, &result)
+		if t.run == nil {
+			continue
+		}
 		wp.workers <- struct{}{}
 		go func() {
 			defer wp.wg.Done()
-			if t.run != nil {
-				result.err = t.run(ctx)
-			}
+			result := taskResult{id: t.id}
+			result.err = t.run(ctx)
+			wp.mu.Lock()
+			wp.results = append(wp.results, &result)
+			wp.mu.Unlock()
+
 			<-wp.workers
 		}()
 	}

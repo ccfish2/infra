@@ -8,9 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (l *Logger) Log(args ...interface{}) {
+func (l *Logger) Log(args ...interface{}) error {
 	if !option.Config.Debug {
-		return
+		return nil
 	}
 	b := strings.Builder{}
 	for _, a := range args {
@@ -29,6 +29,7 @@ func (l *Logger) Log(args ...interface{}) {
 		}
 	}
 	l.Debug(strings.TrimSpace(b.String()))
+	return nil
 }
 
 type Logger struct {
