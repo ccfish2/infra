@@ -15,6 +15,8 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/ccfish2/infra/pkg/logging/logfields"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type LogFormat string
@@ -29,11 +31,14 @@ const (
 	LogFormatJSON          LogFormat = "json"
 	LogFormatJSONTimestamp LogFormat = "json-ts"
 
-	DefaultLogFormat LogFormat = LogFormatText
+	DefaultLogFormat          LogFormat    = LogFormatText
+	DefaultLogFormatTimestamp LogFormat    = LogFormatTextTimestamp
+	DefaultLogLevel           logrus.Level = logrus.InfoLevel
 
-	DefaultLogFormatTimestamp LogFormat = LogFormatTextTimestamp
-
-	DefaultLogLevel logrus.Level = logrus.InfoLevel
+	DefaultLogDirectory  string = "/app/logs"
+	DefaultLogMaxSize           = 100
+	DefaultLogMaxBackups        = 7
+	DefaultLogMaxAge            = 7
 )
 
 var DefaultLogger = initializeDefaultLogger()
@@ -60,7 +65,29 @@ func initializeKLog() {
 type LogOptions map[string]string
 
 func initializeDefaultLogger() (logger *logrus.Logger) {
+	logDir := os.Getenv("OPERATOR_LOG_DIR")
+	if logDir == "" {
+		logDir = DefaultLogDirectory
+	}
+	return initializeDefaultLoggerWithLogDir(logDir)
+}
+
+func initializeDefaultLoggerWithLogDir(logDir string) (logger *logrus.Logger) {
 	logger = logrus.New()
+
+	today := time.Now().Format("2006-01-02")
+	logFile := filePath.Join(logDir, today+".log")
+	err := os.MkdirAll(logDir, 0755)
+	if err != nil {
+		logger.Errorf("Failed to create log directory: %v", err)
+	}
+	logger.SetOutput(&lumberjack.Logger{
+		FileName:   logFile,
+		MaxSize:    DefaultLogMaxSize,
+		MaxAge:     DefaultLogMaxAge,
+		MaxBackups: DefaultLogMaxBackups,
+		Compress:   true,
+	})
 	logger.SetFormatter(GetFormatter(DefaultLogFormatTimestamp))
 	logger.SetLevel(DefaultLogLevel)
 	return
