@@ -58,7 +58,10 @@ spec:
               resources:
                 items:
                   type: object
+<<<<<<< HEAD
                   x-kubernetes-preserve-unknown-fields: true
+=======
+>>>>>>> 0bfaec5 (integrating CRD)
                 type: array
               services:
                 items:
