@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -76,13 +77,13 @@ func initializeDefaultLoggerWithLogDir(logDir string) (logger *logrus.Logger) {
 	logger = logrus.New()
 
 	today := time.Now().Format("2006-01-02")
-	logFile := filePath.Join(logDir, today+".log")
+	logFile := filepath.Join(logDir, today+".log")
 	err := os.MkdirAll(logDir, 0755)
 	if err != nil {
 		logger.Errorf("Failed to create log directory: %v", err)
 	}
 	logger.SetOutput(&lumberjack.Logger{
-		FileName:   logFile,
+		Filename:   logFile,
 		MaxSize:    DefaultLogMaxSize,
 		MaxAge:     DefaultLogMaxAge,
 		MaxBackups: DefaultLogMaxBackups,

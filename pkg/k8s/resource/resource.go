@@ -525,7 +525,7 @@ func (r *resource[T]) newInformer() (cache.Indexer, cache.Controller) {
 		ListerWatcher:    r.lw,
 		ObjectType:       r.opts.sourceObj(),
 		FullResyncPeriod: 0,
-		RetryOnError:     false,
+		//RetryOnError:     false,
 		Process: func(obj interface{}, isInInitialList bool) error {
 			r.mu.Lock()
 			defer r.mu.Unlock()

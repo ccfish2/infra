@@ -5,57 +5,65 @@ import (
 	"os"
 
 	bgpconfig "github.com/ccfish2/infra/pkg/bgp/config"
+	bgpk8s "github.com/ccfish2/infra/pkg/bgp/k8s"
 	bgplog "github.com/ccfish2/infra/pkg/bgp/log"
+	"github.com/ccfish2/infra/pkg/k8s/client"
 	"github.com/ccfish2/infra/pkg/option"
+
+	metallballoc "github.com/ccfish2/metalb0110/pkg/allocator"
+	metallbctl "github.com/ccfish2/metalb0110/pkg/controller"
+	"github.com/ccfish2/metalb0110/pkg/k8s"
+	"github.com/ccfish2/metalb0110/pkg/k8s/types"
 	"github.com/sirupsen/logrus"
-	metallballoc "go.universe.tf/metallb/pkg/allocator"
-	metallbctl "go.universe.tf/metallb/pkg/controller"
-	"go.universe.tf/metallb/pkg/k8s"
-	"go.universe.tf/metallb/pkg/k8s/types"
 	v1 "k8s.io/api/core/v1"
 )
 
 type Controller interface {
-	SetBalancer(name string, srvRo v1.Service, eps k8s.EpsOrSlices) types.SyncState
+	SetBalancer(name string, srvRo *v1.Service, eps k8s.EpsOrSlices) types.SyncState
 	MarkSynced()
 }
 
 type metalLBController struct {
-	c      metallbctl.Controller
-	logger k8s.Ips
+	c      *metallbctl.Controller
+	logger *bgplog.Logger
 }
 
-func NewMetaLBController(ctx context.Context, client k8s.Clientset) (Controller, error) {
-	logger := bgplog.Logger{Entry: log}
+func newMetalLBController(ctx context.Context, cs client.Clientset) (Controller, error) {
+	logger := &bgplog.Logger{Entry: log}
 	c := &metallbctl.Controller{
-		Client: client,
-		Ips:    metallballoc.New(),
+		Client: bgpk8s.New(cs, logger.Logger),
+		IPs:    metallballoc.New(),
 	}
+
 	f, err := os.Open(option.Config.BGPConfigPath)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	cfg, err := bgpconfig.Parse(f)
+	config, err := bgpconfig.Parse(f)
 	if err != nil {
 		return nil, err
 	}
-	c.SetConfig(logger, cfg)
-	return metalLBController{c, logger}, nil
+	c.SetConfig(logger, config)
+
+	return &metalLBController{
+		c,
+		logger,
+	}, nil
 }
 
-func (c metalLBController) SetBalancer(name string, srvRo *v1.Service, eps k8s.EpsOrSlices) types.SyncState {
+func (c *metalLBController) SetBalancer(name string, srvRo *v1.Service, eps k8s.EpsOrSlices) types.SyncState {
 	var (
 		l = log.WithFields(logrus.Fields{
-			"service":    name,
-			"components": "",
+			"component": "metalLBController.SetBalancer",
+			"service":   name,
 		})
 	)
-	l.Debug("")
+	l.Debug("assigning load balancer ip for service")
 	return c.c.SetBalancer(c.logger, name, srvRo, eps)
 }
 
-func (c metalLBController) MarkSynced() {
-	return c.c.MarkSynced()
+func (c *metalLBController) MarkSynced() {
+	c.c.MarkSynced(c.logger)
 }

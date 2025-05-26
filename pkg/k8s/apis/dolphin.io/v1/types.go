@@ -23,9 +23,8 @@ import (
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 
-// DolphinIdentity is a CRD that represents an identity managed by Dolphin.
-//
-//	kubectl get dolphinid -l 'foo=bar'
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 type DolphinIdentity struct {
 	// +deepequal-gen=false
 	metav1.TypeMeta `json:",inline"`
@@ -39,7 +38,7 @@ type DolphinIdentity struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +deepequal-gen=false
 
-// DolphinIdentityList is a list of DolphinIdentity objects.
+// +kubebuilder:object:root=true
 type DolphinIdentityList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`

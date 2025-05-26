@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 
+	"net/netip"
+
 	"github.com/ccfish2/infra/pkg/defaults"
 )
 
@@ -28,4 +30,9 @@ func ValidateClusterID(id uint32) error {
 		return fmt.Errorf("cluster id %d out of range min %d max %d", id, ClusterIDMin, ClusterIDMax)
 	}
 	return nil
+}
+
+type AddrCluster struct {
+	addr      netip.Addr
+	clusterID uint32
 }

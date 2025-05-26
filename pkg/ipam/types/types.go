@@ -32,8 +32,8 @@ type IPAMPoolAllocation struct {
 	CIDRs []IPAMPodCIDR `json:"cidrs,omitempty"`
 }
 type IPAMPoolSpec struct {
-	Requested []IPAMPoolRequest
-	Allocated []IPAMPoolAllocation
+	Requested []IPAMPoolRequest    `json:"requested,omitempty"`
+	Allocated []IPAMPoolAllocation `json:"allocated,omitempty"`
 }
 type Address interface{}
 type AddressIterator func(instanceID, interfaceID, ip, poolID string, address Address) error

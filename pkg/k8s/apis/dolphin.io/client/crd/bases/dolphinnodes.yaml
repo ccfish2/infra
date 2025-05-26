@@ -1,0 +1,416 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: dolphinnodes.dolphin.io
+spec:
+  group: dolphin.io
+  names:
+    categories:
+    - dolphin
+    kind: DolphinNode
+    listKind: DolphinNodeList
+    plural: dolphinnodes
+    shortNames:
+    - cn
+    - dolphinn
+    singular: dolphinnode
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - description: Dolphin internal IP for this node
+      jsonPath: .spec.addresses[?(@.type=="DolphinInternalIP")].ip
+      name: DolphinInternalIP
+      type: string
+    - description: IP of the node
+      jsonPath: .spec.addresses[?(@.type=="InternalIP")].ip
+      name: InternalIP
+      type: string
+    - description: Time duration since creation of Dolphinnode
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          DolphinNode represents a node managed by Dolphin. It contains a specification
+          to control various node specific configuration aspects and a status section
+          to represent the status of the node.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec defines the desired specification/configuration of the
+              node.
+            properties:
+              addresses:
+                description: Addresses is the list of all node addresses.
+                items:
+                  description: NodeAddress is a node address.
+                  properties:
+                    ip:
+                      description: IP is an IP of a node
+                      type: string
+                    type:
+                      description: Type is the type of the node address
+                      type: string
+                  type: object
+                type: array
+              azure:
+                description: Azure is the Azure IPAM specific configuration.
+                properties:
+                  interface-name:
+                    type: string
+                type: object
+              bootid:
+                description: BootID is a unique node identifier generated on boot
+                type: string
+              encryption:
+                description: Encryption is the encryption configuration of the node.
+                properties:
+                  key:
+                    type: integer
+                type: object
+              eni:
+                description: ENI is the AWS ENI specific configuration.
+                properties:
+                  availability-zone:
+                    description: AvailabilityZone is the availability zone to use
+                      when allocating
+                    type: string
+                  delete-on-termination:
+                    description: DeleteOnTermination defines that the ENI should be
+                      deleted
+                    type: boolean
+                  disable-prefix-delegation:
+                    description: |-
+                      DisablePrefixDelegation determines whether ENI prefix delegation should be
+                      disabled on this node.
+                    type: boolean
+                  exclude-interface-tags:
+                    additionalProperties:
+                      type: string
+                    description: ExcludeInterfaceTags is the list of tags to use when
+                      excluding ENIs
+                    type: object
+                  first-interface-index:
+                    description: FirstInterfaceIndex is the index of the first ENI
+                      to use for IP
+                    minimum: 0
+                    type: integer
+                  instance-id:
+                    description: InstanceID is the AWS InstanceId of the node
+                    type: string
+                  instance-type:
+                    description: InstanceType is the AWS EC2 instance type, e.g. "m5.large"
+                    type: string
+                  max-above-watermark:
+                    description: MaxAboveWatermark is the maximum number of addresses
+                      to allocate
+                    minimum: 0
+                    type: integer
+                  min-allocate:
+                    description: MinAllocate is the minimum number of IPs that must
+                      be allocated when
+                    minimum: 0
+                    type: integer
+                  node-subnet-id:
+                    description: NodeSubnetID is the subnet of the primary ENI the
+                      instance was brought up
+                    type: string
+                  pre-allocate:
+                    description: PreAllocate defines the number of IP addresses that
+                      must
+                    minimum: 0
+                    type: integer
+                  security-group-tags:
+                    additionalProperties:
+                      type: string
+                    description: SecurityGroupTags is the list of tags to use when
+                      evaliating what
+                    type: object
+                  security-groups:
+                    description: SecurityGroups is the list of security groups to
+                      attach to any ENI
+                    items:
+                      type: string
+                    type: array
+                  subnet-ids:
+                    description: SubnetIDs is the list of subnet ids to use when evaluating
+                      what AWS
+                    items:
+                      type: string
+                    type: array
+                  subnet-tags:
+                    additionalProperties:
+                      type: string
+                    description: SubnetTags is the list of tags to use when evaluating
+                      what AWS
+                    type: object
+                  use-primary-address:
+                    description: UsePrimaryAddress determines whether an ENI's primary
+                      address
+                    type: boolean
+                  vpc-id:
+                    description: VpcID is the VPC ID to use when allocating ENIs.
+                    type: string
+                type: object
+              health:
+                description: |-
+                  HealthAddressing is the addressing information for health connectivity
+                  checking.
+                properties:
+                  ipv4:
+                    description: IPv4 is the IPv4 address of the IPv4 health endpoint.
+                    type: string
+                  ipv6:
+                    description: IPv6 is the IPv6 address of the IPv4 health endpoint.
+                    type: string
+                type: object
+              ingress:
+                description: IngressAddressing is the addressing information for Ingress
+                  listener.
+                properties:
+                  ipv_4:
+                    type: string
+                  ipv_6:
+                    type: string
+                type: object
+              instance-id:
+                description: InstanceID is the identifier of the node. This is different
+                  from the
+                type: string
+              ipam:
+                description: IPAM is the address management specification. This section
+                  can be
+                properties:
+                  maxAboveWatermark:
+                    type: integer
+                  maxAllocate:
+                    type: integer
+                  minAllocate:
+                    type: integer
+                  podCIDRs:
+                    items:
+                      type: string
+                    type: array
+                  pool:
+                    additionalProperties:
+                      properties:
+                        owner:
+                          type: string
+                        resource:
+                          type: string
+                      type: object
+                    type: object
+                  pools:
+                    properties:
+                      allocated:
+                        items:
+                          properties:
+                            cidrs:
+                              items:
+                                type: string
+                              type: array
+                            pool:
+                              type: string
+                          type: object
+                        type: array
+                      requested:
+                        items:
+                          properties:
+                            needed:
+                              properties:
+                                ip_v4_addrs:
+                                  type: integer
+                                ip_v6_addrs:
+                                  type: integer
+                              type: object
+                            pool:
+                              type: string
+                          type: object
+                        type: array
+                    type: object
+                  preAllocate:
+                    type: integer
+                type: object
+              nodeidentity:
+                description: NodeIdentity is the Dolphin numeric identity allocated
+                  for the node, if any.
+                format: int64
+                type: integer
+            type: object
+          status:
+            description: |-
+              Status defines the realized specification/configuration and status
+              of the node.
+            properties:
+              azure:
+                description: Azure is the Azure specific status of the node.
+                properties:
+                  interfaces:
+                    items:
+                      description: AzureInterface is the interface of the Azure Interface
+                      properties:
+                        GatewayIP:
+                          type: string
+                        addresses:
+                          items:
+                            properties:
+                              ip:
+                                type: string
+                              state:
+                                type: string
+                              subnet:
+                                type: string
+                            type: object
+                          type: array
+                        cidr:
+                          type: string
+                        gateway:
+                          type: string
+                        id:
+                          type: string
+                        mac:
+                          type: string
+                        name:
+                          type: string
+                        security-group:
+                          type: string
+                        state:
+                          type: string
+                      required:
+                      - GatewayIP
+                      - gateway
+                      type: object
+                    type: array
+                type: object
+              eni:
+                description: ENI is the AWS ENI specific status of the node.
+                properties:
+                  enis:
+                    additionalProperties:
+                      description: |-
+                        ENI represents an AWS Elastic Network Interface
+                        https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html
+                      properties:
+                        addresses:
+                          items:
+                            type: string
+                          type: array
+                        availability-zone:
+                          type: string
+                        description:
+                          type: string
+                        id:
+                          type: string
+                        ip:
+                          type: string
+                        mac:
+                          type: string
+                        number:
+                          type: integer
+                        prefixes:
+                          items:
+                            type: string
+                          type: array
+                        security-groups:
+                          description: SecurityGroups are the security groups associated
+                            with the ENI
+                          items:
+                            type: string
+                          type: array
+                        subnet:
+                          description: AwsSubnet stores information regarding an AWS
+                            subnet
+                          properties:
+                            cidr:
+                              description: CIDR is the CIDR range associated with
+                                the subnet
+                              type: string
+                            id:
+                              description: ID is the ID of the subnet
+                              type: string
+                          type: object
+                        tags:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        vpc:
+                          description: AwsVPC stores information regarding an AWS
+                            VPC
+                          properties:
+                            cidrs:
+                              description: CIDRs is the list of CIDR ranges associated
+                                with the VPC
+                              items:
+                                type: string
+                              type: array
+                            id:
+                              description: / ID is the ID of a VPC
+                              type: string
+                            primary-cidr:
+                              description: PrimaryCIDR is the primary CIDR of the
+                                VPC
+                              type: string
+                          type: object
+                      type: object
+                    description: ENIs is the list of ENIs on the node
+                    type: object
+                type: object
+              ipam:
+                description: IPAM is the IPAM status of the node.
+                properties:
+                  operatorStatus:
+                    properties:
+                      error:
+                        type: string
+                    type: object
+                  podCIDRs:
+                    additionalProperties:
+                      properties:
+                        staus:
+                          type: string
+                      type: object
+                    type: object
+                  releaseIPs:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  used:
+                    additionalProperties:
+                      properties:
+                        owner:
+                          type: string
+                        resource:
+                          type: string
+                      type: object
+                    type: object
+                type: object
+            type: object
+        required:
+        - metadata
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
