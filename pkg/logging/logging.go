@@ -43,6 +43,7 @@ const (
 )
 
 var DefaultLogger = initializeDefaultLogger()
+var DefaultLoggerNoFile = initLogNoFile()
 
 func initializeKLog() {
 	log := DefaultLogger.WithField(logfields.LogSubsys, "klog")
@@ -64,6 +65,13 @@ func initializeKLog() {
 }
 
 type LogOptions map[string]string
+
+func initLogNoFile() (logger *logrus.Logger) {
+	logger = logrus.New()
+	logger.SetFormatter(GetFormatter(DefaultLogFormatTimestamp))
+	logger.SetLevel(DefaultLogLevel)
+	return
+}
 
 func initializeDefaultLogger() (logger *logrus.Logger) {
 	logDir := os.Getenv("OPERATOR_LOG_DIR")
