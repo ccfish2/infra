@@ -18,4 +18,7 @@ const (
 	IngressClass = "ingressClass"
 
 	ServiceType = "svcType"
+
+	K8sNamespace = "k8sNamespace"
+	Route        = "route"
 )
