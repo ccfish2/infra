@@ -67,6 +67,7 @@ func initializeKLog() {
 type LogOptions map[string]string
 
 func initLogNoFile() (logger *logrus.Logger) {
+	fmt.Println("Initializing logger without file output")
 	logger = logrus.New()
 	logger.SetFormatter(GetFormatter(DefaultLogFormatTimestamp))
 	logger.SetLevel(DefaultLogLevel)
@@ -74,6 +75,7 @@ func initLogNoFile() (logger *logrus.Logger) {
 }
 
 func initializeDefaultLogger() (logger *logrus.Logger) {
+	fmt.Println("Initializing default logger with file output")
 	logDir := os.Getenv("OPERATOR_LOG_DIR")
 	if logDir == "" {
 		logDir = DefaultLogDirectory
