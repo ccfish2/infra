@@ -36,7 +36,7 @@ const (
 	DefaultLogFormatTimestamp LogFormat    = LogFormatTextTimestamp
 	DefaultLogLevel           logrus.Level = logrus.InfoLevel
 
-	DefaultLogDirectory  string = "/app/logs"
+	DefaultLogDirectory  string = "/tmp/logs"
 	DefaultLogMaxSize           = 100
 	DefaultLogMaxBackups        = 7
 	DefaultLogMaxAge            = 7
