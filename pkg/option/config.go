@@ -62,6 +62,7 @@ const (
 	EndpointStatusState       = "state"
 
 	EnableDolphinEndpointSlice = "enable-dolphin-endpointslice"
+	EnableScalableLogis        = "k8s-kubeconfig-path"
 )
 
 func (c *DaemonConfig) DolphinNamespaceName() string {
@@ -143,6 +144,7 @@ type DaemonConfig struct {
 	Debug                 bool
 
 	DisableDolphinEndpointCRD bool
+	EnableScalableLogis       bool
 }
 
 var (
