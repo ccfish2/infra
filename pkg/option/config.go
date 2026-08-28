@@ -191,6 +191,7 @@ var (
 		EnableBGPControlPlane:  defaults.EnableBGPControlPlane,
 		EnableK8sNetworkPolicy: defaults.EnableK8sNetworkPolicy,
 		EnableEnvoyConfig:      defaults.EnableEnvoyConfig,
+		EnableScalableLogis:    defaults.EnableScalableLogis,
 	}
 )
 
