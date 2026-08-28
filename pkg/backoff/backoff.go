@@ -1,10 +1,13 @@
 package backoff
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"math"
 	"time"
 
+	"github.com/ccfish2/infra/pkg/logging/logfields"
 	"github.com/ccfish2/infra/pkg/rand"
 	"github.com/google/uuid"
 )
@@ -70,4 +73,43 @@ func (b *Exponential) Duration(attempt int) time.Duration {
 		t = b.Max
 	}
 	return t
+}
+
+// Wait waits for the required time using an exponential backoff
+func (b *Exponential) Wait(ctx context.Context) error {
+	if resetDuration := b.ResetAfter; resetDuration != time.Duration(0) && resetDuration > b.Max {
+		if !b.lastBackoffStart.IsZero() {
+			if time.Since(b.lastBackoffStart) > resetDuration {
+				b.Reset()
+			}
+		}
+	}
+
+	b.lastBackoffStart = time.Now()
+	b.attempt++
+	t := b.Duration(b.attempt)
+
+	b.Logger.Debug("Sleeping with exponential backoff",
+		logfields.Duration, t,
+		logfields.Attempt, b.attempt,
+		logfields.Name, b.Name,
+	)
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("exponential backoff cancelled via context: %w", ctx.Err())
+	case <-time.After(t):
+	}
+
+	return nil
+}
+
+// Reset backoff attempt counter
+func (b *Exponential) Reset() {
+	b.attempt = 0
+}
+
+// Attempt returns the number of attempts since the last reset.
+func (b *Exponential) Attempt() int {
+	return b.attempt
 }
