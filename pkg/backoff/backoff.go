@@ -1,6 +1,7 @@
 package backoff
 
 import (
+	"log/slog"
 	"math"
 	"time"
 
@@ -28,6 +29,7 @@ type Exponential struct {
 	ResetAfter       time.Duration
 	lastBackoffStart time.Time
 	attempt          int
+	Logger           *slog.Logger
 }
 
 func CalculateDuration(min, max time.Duration, factor float64, jitter bool, failures int) time.Duration {
