@@ -18,9 +18,10 @@ limitations under the License.
 package externalversions
 
 import (
-	"fmt"
+	fmt "fmt"
 
 	v1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	v2alpha1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v2alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -62,6 +63,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dolphin().V1().DolphinIdentities().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("dolphinnodes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dolphin().V1().DolphinNodes().Informer()}, nil
+
+		// Group=dolphin.io, Version=v2alpha1
+	case v2alpha1.SchemeGroupVersion.WithResource("dolphingatewayclassconfigs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Dolphin().V2alpha1().DolphinGatewayClassConfigs().Informer()}, nil
 
 	}
 

@@ -18,13 +18,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	apisdolphiniov1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
 	versioned "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned"
 	internalinterfaces "github.com/ccfish2/infra/pkg/k8s/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/ccfish2/infra/pkg/k8s/client/listers/dolphin.io/v1"
+	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/client/listers/dolphin.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -35,7 +35,7 @@ import (
 // DolphinNodes.
 type DolphinNodeInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.DolphinNodeLister
+	Lister() dolphiniov1.DolphinNodeLister
 }
 
 type dolphinNodeInformer struct {
@@ -55,21 +55,33 @@ func NewDolphinNodeInformer(client versioned.Interface, resyncPeriod time.Durati
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredDolphinNodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DolphinV1().DolphinNodes().List(context.TODO(), options)
+				return client.DolphinV1().DolphinNodes().List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DolphinV1().DolphinNodes().Watch(context.TODO(), options)
+				return client.DolphinV1().DolphinNodes().Watch(context.Background(), options)
 			},
-		},
-		&dolphiniov1.DolphinNode{},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.DolphinV1().DolphinNodes().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.DolphinV1().DolphinNodes().Watch(ctx, options)
+			},
+		}, client),
+		&apisdolphiniov1.DolphinNode{},
 		resyncPeriod,
 		indexers,
 	)
@@ -80,9 +92,9 @@ func (f *dolphinNodeInformer) defaultInformer(client versioned.Interface, resync
 }
 
 func (f *dolphinNodeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&dolphiniov1.DolphinNode{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisdolphiniov1.DolphinNode{}, f.defaultInformer)
 }
 
-func (f *dolphinNodeInformer) Lister() v1.DolphinNodeLister {
-	return v1.NewDolphinNodeLister(f.Informer().GetIndexer())
+func (f *dolphinNodeInformer) Lister() dolphiniov1.DolphinNodeLister {
+	return dolphiniov1.NewDolphinNodeLister(f.Informer().GetIndexer())
 }

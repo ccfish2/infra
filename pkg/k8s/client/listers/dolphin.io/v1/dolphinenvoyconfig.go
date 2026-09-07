@@ -18,10 +18,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DolphinEnvoyConfigLister helps list DolphinEnvoyConfigs.
@@ -29,7 +29,7 @@ import (
 type DolphinEnvoyConfigLister interface {
 	// List lists all DolphinEnvoyConfigs in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DolphinEnvoyConfig, err error)
+	List(selector labels.Selector) (ret []*dolphiniov1.DolphinEnvoyConfig, err error)
 	// DolphinEnvoyConfigs returns an object that can list and get DolphinEnvoyConfigs.
 	DolphinEnvoyConfigs(namespace string) DolphinEnvoyConfigNamespaceLister
 	DolphinEnvoyConfigListerExpansion
@@ -37,25 +37,17 @@ type DolphinEnvoyConfigLister interface {
 
 // dolphinEnvoyConfigLister implements the DolphinEnvoyConfigLister interface.
 type dolphinEnvoyConfigLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*dolphiniov1.DolphinEnvoyConfig]
 }
 
 // NewDolphinEnvoyConfigLister returns a new DolphinEnvoyConfigLister.
 func NewDolphinEnvoyConfigLister(indexer cache.Indexer) DolphinEnvoyConfigLister {
-	return &dolphinEnvoyConfigLister{indexer: indexer}
-}
-
-// List lists all DolphinEnvoyConfigs in the indexer.
-func (s *dolphinEnvoyConfigLister) List(selector labels.Selector) (ret []*v1.DolphinEnvoyConfig, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DolphinEnvoyConfig))
-	})
-	return ret, err
+	return &dolphinEnvoyConfigLister{listers.New[*dolphiniov1.DolphinEnvoyConfig](indexer, dolphiniov1.Resource("dolphinenvoyconfig"))}
 }
 
 // DolphinEnvoyConfigs returns an object that can list and get DolphinEnvoyConfigs.
 func (s *dolphinEnvoyConfigLister) DolphinEnvoyConfigs(namespace string) DolphinEnvoyConfigNamespaceLister {
-	return dolphinEnvoyConfigNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return dolphinEnvoyConfigNamespaceLister{listers.NewNamespaced[*dolphiniov1.DolphinEnvoyConfig](s.ResourceIndexer, namespace)}
 }
 
 // DolphinEnvoyConfigNamespaceLister helps list and get DolphinEnvoyConfigs.
@@ -63,36 +55,15 @@ func (s *dolphinEnvoyConfigLister) DolphinEnvoyConfigs(namespace string) Dolphin
 type DolphinEnvoyConfigNamespaceLister interface {
 	// List lists all DolphinEnvoyConfigs in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DolphinEnvoyConfig, err error)
+	List(selector labels.Selector) (ret []*dolphiniov1.DolphinEnvoyConfig, err error)
 	// Get retrieves the DolphinEnvoyConfig from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.DolphinEnvoyConfig, error)
+	Get(name string) (*dolphiniov1.DolphinEnvoyConfig, error)
 	DolphinEnvoyConfigNamespaceListerExpansion
 }
 
 // dolphinEnvoyConfigNamespaceLister implements the DolphinEnvoyConfigNamespaceLister
 // interface.
 type dolphinEnvoyConfigNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all DolphinEnvoyConfigs in the indexer for a given namespace.
-func (s dolphinEnvoyConfigNamespaceLister) List(selector labels.Selector) (ret []*v1.DolphinEnvoyConfig, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DolphinEnvoyConfig))
-	})
-	return ret, err
-}
-
-// Get retrieves the DolphinEnvoyConfig from the indexer for a given namespace and name.
-func (s dolphinEnvoyConfigNamespaceLister) Get(name string) (*v1.DolphinEnvoyConfig, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("dolphinenvoyconfig"), name)
-	}
-	return obj.(*v1.DolphinEnvoyConfig), nil
+	listers.ResourceIndexer[*dolphiniov1.DolphinEnvoyConfig]
 }

@@ -18,10 +18,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DolphinNodeLister helps list DolphinNodes.
@@ -29,39 +29,19 @@ import (
 type DolphinNodeLister interface {
 	// List lists all DolphinNodes in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DolphinNode, err error)
+	List(selector labels.Selector) (ret []*dolphiniov1.DolphinNode, err error)
 	// Get retrieves the DolphinNode from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.DolphinNode, error)
+	Get(name string) (*dolphiniov1.DolphinNode, error)
 	DolphinNodeListerExpansion
 }
 
 // dolphinNodeLister implements the DolphinNodeLister interface.
 type dolphinNodeLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*dolphiniov1.DolphinNode]
 }
 
 // NewDolphinNodeLister returns a new DolphinNodeLister.
 func NewDolphinNodeLister(indexer cache.Indexer) DolphinNodeLister {
-	return &dolphinNodeLister{indexer: indexer}
-}
-
-// List lists all DolphinNodes in the indexer.
-func (s *dolphinNodeLister) List(selector labels.Selector) (ret []*v1.DolphinNode, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DolphinNode))
-	})
-	return ret, err
-}
-
-// Get retrieves the DolphinNode from the index for a given name.
-func (s *dolphinNodeLister) Get(name string) (*v1.DolphinNode, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("dolphinnode"), name)
-	}
-	return obj.(*v1.DolphinNode), nil
+	return &dolphinNodeLister{listers.New[*dolphiniov1.DolphinNode](indexer, dolphiniov1.Resource("dolphinnode"))}
 }

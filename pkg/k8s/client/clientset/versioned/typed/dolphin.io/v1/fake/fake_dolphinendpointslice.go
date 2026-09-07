@@ -18,103 +18,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeDolphinEndpointSlices implements DolphinEndpointSliceInterface
-type FakeDolphinEndpointSlices struct {
+// fakeDolphinEndpointSlices implements DolphinEndpointSliceInterface
+type fakeDolphinEndpointSlices struct {
+	*gentype.FakeClientWithList[*v1.DolphinEndpointSlice, *v1.DolphinEndpointSliceList]
 	Fake *FakeDolphinV1
 }
 
-var dolphinendpointslicesResource = v1.SchemeGroupVersion.WithResource("dolphinendpointslices")
-
-var dolphinendpointslicesKind = v1.SchemeGroupVersion.WithKind("DolphinEndpointSlice")
-
-// Get takes name of the dolphinEndpointSlice, and returns the corresponding dolphinEndpointSlice object, and an error if there is any.
-func (c *FakeDolphinEndpointSlices) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.DolphinEndpointSlice, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(dolphinendpointslicesResource, name), &v1.DolphinEndpointSlice{})
-	if obj == nil {
-		return nil, err
+func newFakeDolphinEndpointSlices(fake *FakeDolphinV1) dolphiniov1.DolphinEndpointSliceInterface {
+	return &fakeDolphinEndpointSlices{
+		gentype.NewFakeClientWithList[*v1.DolphinEndpointSlice, *v1.DolphinEndpointSliceList](
+			fake.Fake,
+			"",
+			v1.SchemeGroupVersion.WithResource("dolphinendpointslices"),
+			v1.SchemeGroupVersion.WithKind("DolphinEndpointSlice"),
+			func() *v1.DolphinEndpointSlice { return &v1.DolphinEndpointSlice{} },
+			func() *v1.DolphinEndpointSliceList { return &v1.DolphinEndpointSliceList{} },
+			func(dst, src *v1.DolphinEndpointSliceList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.DolphinEndpointSliceList) []*v1.DolphinEndpointSlice {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1.DolphinEndpointSliceList, items []*v1.DolphinEndpointSlice) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1.DolphinEndpointSlice), err
-}
-
-// List takes label and field selectors, and returns the list of DolphinEndpointSlices that match those selectors.
-func (c *FakeDolphinEndpointSlices) List(ctx context.Context, opts metav1.ListOptions) (result *v1.DolphinEndpointSliceList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(dolphinendpointslicesResource, dolphinendpointslicesKind, opts), &v1.DolphinEndpointSliceList{})
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.DolphinEndpointSliceList{ListMeta: obj.(*v1.DolphinEndpointSliceList).ListMeta}
-	for _, item := range obj.(*v1.DolphinEndpointSliceList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested dolphinEndpointSlices.
-func (c *FakeDolphinEndpointSlices) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(dolphinendpointslicesResource, opts))
-}
-
-// Create takes the representation of a dolphinEndpointSlice and creates it.  Returns the server's representation of the dolphinEndpointSlice, and an error, if there is any.
-func (c *FakeDolphinEndpointSlices) Create(ctx context.Context, dolphinEndpointSlice *v1.DolphinEndpointSlice, opts metav1.CreateOptions) (result *v1.DolphinEndpointSlice, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(dolphinendpointslicesResource, dolphinEndpointSlice), &v1.DolphinEndpointSlice{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DolphinEndpointSlice), err
-}
-
-// Update takes the representation of a dolphinEndpointSlice and updates it. Returns the server's representation of the dolphinEndpointSlice, and an error, if there is any.
-func (c *FakeDolphinEndpointSlices) Update(ctx context.Context, dolphinEndpointSlice *v1.DolphinEndpointSlice, opts metav1.UpdateOptions) (result *v1.DolphinEndpointSlice, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(dolphinendpointslicesResource, dolphinEndpointSlice), &v1.DolphinEndpointSlice{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DolphinEndpointSlice), err
-}
-
-// Delete takes name of the dolphinEndpointSlice and deletes it. Returns an error if one occurs.
-func (c *FakeDolphinEndpointSlices) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(dolphinendpointslicesResource, name, opts), &v1.DolphinEndpointSlice{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeDolphinEndpointSlices) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(dolphinendpointslicesResource, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.DolphinEndpointSliceList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched dolphinEndpointSlice.
-func (c *FakeDolphinEndpointSlices) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DolphinEndpointSlice, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(dolphinendpointslicesResource, name, pt, data, subresources...), &v1.DolphinEndpointSlice{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DolphinEndpointSlice), err
 }

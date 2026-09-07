@@ -18,38 +18,22 @@ limitations under the License.
 package fake
 
 import (
-	v1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v1"
+	v2alpha1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v2alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeDolphinV1 struct {
+type FakeDolphinV2alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeDolphinV1) DolphinEndpoints(namespace string) v1.DolphinEndpointInterface {
-	return newFakeDolphinEndpoints(c, namespace)
-}
-
-func (c *FakeDolphinV1) DolphinEndpointSlices() v1.DolphinEndpointSliceInterface {
-	return newFakeDolphinEndpointSlices(c)
-}
-
-func (c *FakeDolphinV1) DolphinEnvoyConfigs(namespace string) v1.DolphinEnvoyConfigInterface {
-	return newFakeDolphinEnvoyConfigs(c, namespace)
-}
-
-func (c *FakeDolphinV1) DolphinIdentities() v1.DolphinIdentityInterface {
-	return newFakeDolphinIdentities(c)
-}
-
-func (c *FakeDolphinV1) DolphinNodes() v1.DolphinNodeInterface {
-	return newFakeDolphinNodes(c)
+func (c *FakeDolphinV2alpha1) DolphinGatewayClassConfigs(namespace string) v2alpha1.DolphinGatewayClassConfigInterface {
+	return newFakeDolphinGatewayClassConfigs(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeDolphinV1) RESTClient() rest.Interface {
+func (c *FakeDolphinV2alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

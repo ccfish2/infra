@@ -18,114 +18,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeDolphinNodes implements DolphinNodeInterface
-type FakeDolphinNodes struct {
+// fakeDolphinNodes implements DolphinNodeInterface
+type fakeDolphinNodes struct {
+	*gentype.FakeClientWithList[*v1.DolphinNode, *v1.DolphinNodeList]
 	Fake *FakeDolphinV1
 }
 
-var dolphinnodesResource = v1.SchemeGroupVersion.WithResource("dolphinnodes")
-
-var dolphinnodesKind = v1.SchemeGroupVersion.WithKind("DolphinNode")
-
-// Get takes name of the dolphinNode, and returns the corresponding dolphinNode object, and an error if there is any.
-func (c *FakeDolphinNodes) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.DolphinNode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(dolphinnodesResource, name), &v1.DolphinNode{})
-	if obj == nil {
-		return nil, err
+func newFakeDolphinNodes(fake *FakeDolphinV1) dolphiniov1.DolphinNodeInterface {
+	return &fakeDolphinNodes{
+		gentype.NewFakeClientWithList[*v1.DolphinNode, *v1.DolphinNodeList](
+			fake.Fake,
+			"",
+			v1.SchemeGroupVersion.WithResource("dolphinnodes"),
+			v1.SchemeGroupVersion.WithKind("DolphinNode"),
+			func() *v1.DolphinNode { return &v1.DolphinNode{} },
+			func() *v1.DolphinNodeList { return &v1.DolphinNodeList{} },
+			func(dst, src *v1.DolphinNodeList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.DolphinNodeList) []*v1.DolphinNode { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.DolphinNodeList, items []*v1.DolphinNode) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1.DolphinNode), err
-}
-
-// List takes label and field selectors, and returns the list of DolphinNodes that match those selectors.
-func (c *FakeDolphinNodes) List(ctx context.Context, opts metav1.ListOptions) (result *v1.DolphinNodeList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(dolphinnodesResource, dolphinnodesKind, opts), &v1.DolphinNodeList{})
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.DolphinNodeList{ListMeta: obj.(*v1.DolphinNodeList).ListMeta}
-	for _, item := range obj.(*v1.DolphinNodeList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested dolphinNodes.
-func (c *FakeDolphinNodes) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(dolphinnodesResource, opts))
-}
-
-// Create takes the representation of a dolphinNode and creates it.  Returns the server's representation of the dolphinNode, and an error, if there is any.
-func (c *FakeDolphinNodes) Create(ctx context.Context, dolphinNode *v1.DolphinNode, opts metav1.CreateOptions) (result *v1.DolphinNode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(dolphinnodesResource, dolphinNode), &v1.DolphinNode{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DolphinNode), err
-}
-
-// Update takes the representation of a dolphinNode and updates it. Returns the server's representation of the dolphinNode, and an error, if there is any.
-func (c *FakeDolphinNodes) Update(ctx context.Context, dolphinNode *v1.DolphinNode, opts metav1.UpdateOptions) (result *v1.DolphinNode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(dolphinnodesResource, dolphinNode), &v1.DolphinNode{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DolphinNode), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDolphinNodes) UpdateStatus(ctx context.Context, dolphinNode *v1.DolphinNode, opts metav1.UpdateOptions) (*v1.DolphinNode, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(dolphinnodesResource, "status", dolphinNode), &v1.DolphinNode{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DolphinNode), err
-}
-
-// Delete takes name of the dolphinNode and deletes it. Returns an error if one occurs.
-func (c *FakeDolphinNodes) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(dolphinnodesResource, name, opts), &v1.DolphinNode{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeDolphinNodes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(dolphinnodesResource, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.DolphinNodeList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched dolphinNode.
-func (c *FakeDolphinNodes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DolphinNode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(dolphinnodesResource, name, pt, data, subresources...), &v1.DolphinNode{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DolphinNode), err
 }
