@@ -16,11 +16,6 @@ const (
 	DGCCName       = DGCCPluralName + "." + CustomResourceDefinitionGroup
 )
 
-var SchemeGroupVersion = schema.GroupVersion{
-	Group:   CustomResourceDefinitionGroup,
-	Version: CustomResourceDefinitionVersion,
-}
-
 var (
 	// SchemeBuilder is needed by DeepCopy generator.
 	SchemeBuilder runtime.SchemeBuilder
