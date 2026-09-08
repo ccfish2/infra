@@ -150,7 +150,7 @@ func (c *compositeClientset) Config() Config {
 	return c.config
 }
 
-func (c *compositeClientset) Discovery() discovery.DiscoveryInterface {
+func (c *compositeClientset) Discovery() discovery.DiscoveryInterfaces {
 	return c.KubernetesClientset.Discovery()
 }
 
@@ -345,7 +345,7 @@ type FakeClientset struct {
 
 var _ Clientset = &FakeClientset{}
 
-func (c *FakeClientset) Discovery() discovery.DiscoveryInterface {
+func (c *FakeClientset) Discovery() discovery.DiscoveryInterfaces {
 	return c.KubernetesFakeClientset.Discovery()
 }
 

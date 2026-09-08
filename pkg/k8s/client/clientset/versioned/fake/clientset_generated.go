@@ -19,6 +19,8 @@ package fake
 
 import (
 	clientset "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned"
+	dolphinv1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v1"
+	fakedolphinv1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v1/fake"
 	dolphinv2alpha1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v2alpha1"
 	fakedolphinv2alpha1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v2alpha1/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,8 +72,16 @@ type Clientset struct {
 	tracker   testing.ObjectTracker
 }
 
-func (c *Clientset) Discovery() discovery.DiscoveryInterface {
+func (c *Clientset) Discovery() discovery.DiscoveryInterfaces {
 	return c.discovery
+}
+
+func (c *Clientset) DolphinV1() dolphinv1.DolphinV1Interface {
+	return &fakedolphinv1.FakeDolphinV1{Fake: &c.Fake}
+}
+
+func (c *Clientset) DolphinV2alpha1() dolphinv2alpha1.DolphinV2alpha1Interface {
+	return &fakedolphinv2alpha1.FakeDolphinV2alpha1{Fake: &c.Fake}
 }
 
 func (c *Clientset) Tracker() testing.ObjectTracker {
@@ -93,8 +103,3 @@ var (
 	_ clientset.Interface = &Clientset{}
 	_ testing.FakeClient  = &Clientset{}
 )
-
-// DolphinV2alpha1 retrieves the DolphinV2alpha1Client
-func (c *Clientset) DolphinV2alpha1() dolphinv2alpha1.DolphinV2alpha1Interface {
-	return &fakedolphinv2alpha1.FakeDolphinV2alpha1{Fake: &c.Fake}
-}
