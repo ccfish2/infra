@@ -1,7 +1,7 @@
 package envoy
 
 import (
-	envoy_config_core "github.com/cilium/proxy/go/envoy/config/core/v3"
+	envoy_config_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 

@@ -16,6 +16,7 @@ import (
 	"github.com/ccfish2/infra/pkg/k8s/apis/crdhelpers"
 	k8sconst "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io"
 	k8sconstv1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	k8sconstv2alpha1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v2alpha1"
 	"github.com/ccfish2/infra/pkg/k8s/client"
 	"github.com/ccfish2/infra/pkg/logging"
 	"github.com/ccfish2/infra/pkg/logging/logfields"
@@ -28,6 +29,8 @@ const (
 	DEPSCRDName = k8sconstv1.DEPSKindDefinition + "/" + k8sconstv1.CustomResourceDefinitionVersion
 	DECRDName   = k8sconstv1.DECKindDefinition + "/" + k8sconstv1.CustomResourceDefinitionVersion
 	DIDCRDName  = k8sconstv1.DIDKindDefinition + "/" + k8sconstv1.CustomResourceDefinitionVersion
+	// DGCCCRDName is the full name of the DolphinGatewayClassConfig CRD.
+	DGCCCRDName = k8sconstv2alpha1.DGCCKindDefinition + "/" + k8sconstv2alpha1.CustomResourceDefinitionVersion
 )
 
 func RegisterCRDs(clientset client.Clientset, scopedlog *logrus.Entry) error {
@@ -66,6 +69,10 @@ func CustomResourceDefinitionList() map[string]*CRDList {
 		CRDResourceName(k8sconstv1.DIDName): {
 			Name:     DIDCRDName,
 			FullName: k8sconstv1.DIDName,
+		},
+		CRDResourceName(k8sconstv2alpha1.DGCCName): {
+			Name:     DGCCCRDName,
+			FullName: k8sconstv2alpha1.DGCCName,
 		},
 	}
 }

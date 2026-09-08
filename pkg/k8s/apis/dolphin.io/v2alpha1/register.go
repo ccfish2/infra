@@ -11,6 +11,9 @@ const (
 	DGCCKindDefinition              = "DolphinGatewayClassConfig"
 	CustomResourceDefinitionVersion = "v2alpha1"
 	CustomResourceDefinitionGroup   = apisgroupconst.CustomResourceDefinitionGroup
+
+	DGCCPluralName = "dolphingatewayclassconfigs"
+	DGCCName       = DGCCPluralName + "." + CustomResourceDefinitionGroup
 )
 
 var SchemeGroupVersion = schema.GroupVersion{
