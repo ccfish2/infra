@@ -10,7 +10,9 @@ CODEGEN_PKG=$GOPATH/src/github.com/code-generator
 
 source "${CODEGEN_PKG}/kube_codegen.sh"
 
-TMPDIR=${1}
+# TMPDIR=${1}
+TMPDIR="${1:-/tmp/codegen-v2alpha1-$(date +%s)}"
+mkdir -p "${TMPDIR}"
 PLURAL_EXCEPTIONS="DolphinEndpoints:DolphinEndpoints,DolphinEnvoyConfig:DolphinEnvoyConfigs,DolphinEndpointSlice:DolphinEndpointSlices,DolphinIdentity:DolphinIdentities,DolphinNode:DolphinNodes"
 
 kube::codegen::gen_client \

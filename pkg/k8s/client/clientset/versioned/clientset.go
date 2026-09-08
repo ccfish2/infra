@@ -18,10 +18,10 @@ limitations under the License.
 package versioned
 
 import (
-	"fmt"
-	"net/http"
+	fmt "fmt"
+	http "net/http"
 
-	dolphinv1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v1"
+	dolphinv2alpha1 "github.com/ccfish2/infra/pkg/k8s/client/clientset/versioned/typed/dolphin.io/v2alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -29,18 +29,18 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	DolphinV1() dolphinv1.DolphinV1Interface
+	DolphinV2alpha1() dolphinv2alpha1.DolphinV2alpha1Interface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	dolphinV1 *dolphinv1.DolphinV1Client
+	dolphinV2alpha1 *dolphinv2alpha1.DolphinV2alpha1Client
 }
 
-// DolphinV1 retrieves the DolphinV1Client
-func (c *Clientset) DolphinV1() dolphinv1.DolphinV1Interface {
-	return c.dolphinV1
+// DolphinV2alpha1 retrieves the DolphinV2alpha1Client
+func (c *Clientset) DolphinV2alpha1() dolphinv2alpha1.DolphinV2alpha1Interface {
+	return c.dolphinV2alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -87,7 +87,7 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
-	cs.dolphinV1, err = dolphinv1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	cs.dolphinV2alpha1, err = dolphinv2alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.dolphinV1 = dolphinv1.New(c)
+	cs.dolphinV2alpha1 = dolphinv2alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
