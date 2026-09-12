@@ -30,7 +30,7 @@ func (inv *invoker) invoke(cont container) error {
 
 		t0 := time.Now()
 		if err := cont.Invoke(afn.fn, dig.FillInvokeInfo(&inv.funcs[i].info)); err != nil {
-			fmt.Printf("Invoke failed")
+			fmt.Printf("Invoke failed: %v\n", err)
 			return err
 		}
 		d := time.Since(t0)

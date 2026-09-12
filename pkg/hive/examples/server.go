@@ -28,21 +28,21 @@ type Server interface {
 }
 
 type serverConfig struct {
-	ServerAddr string
+	ServerListenAddress string
 }
 
 func (cfg serverConfig) Flags(flags *pflag.FlagSet) {
-	flags.String("server-listen-address", cfg.ServerAddr, "")
+	flags.String("server-listen-address", cfg.ServerListenAddress, "")
 }
 
 var defaultServerConfig = serverConfig{
-	ServerAddr: ":8888",
+	ServerListenAddress: ":8888",
 }
 
 type HTTPHandlerOptOut struct {
 	cell.Out
 
-	HTTPHandler HTTPHandler `group:"httphandlers,omitempty"`
+	HTTPHandler HTTPHandler `group:"httphandlers"`
 }
 
 type HTTPHandler struct {
@@ -57,7 +57,7 @@ type serverParams struct {
 	Config   serverConfig
 	LC       cell.Lifecycle
 	Shutdown hive.Shutdowner
-	handler  []HTTPHandler
+	Handler  []HTTPHandler `group:"httphandlers"`
 }
 
 type simpleServer struct {
@@ -70,7 +70,7 @@ func (s *simpleServer) ListenAddress() string {
 }
 
 func (s *simpleServer) listenAndServe() {
-	s.params.Logger.WithField("server-addre", s.params.Config.ServerAddr).Info("Listening")
+	s.params.Logger.WithField("server-address", s.params.Config.ServerListenAddress).Info("Listening")
 	err := s.server.ListenAndServe()
 	if err != nil {
 		s.server.Shutdown(context.Background())
@@ -90,9 +90,9 @@ func (s *simpleServer) Stop(ctx cell.HookContext) error {
 func newServer(params serverParams) Server {
 	mux := http.NewServeMux()
 	s := &simpleServer{params: params}
-	s.server.Addr = s.params.Config.ServerAddr
+	s.server.Addr = s.params.Config.ServerListenAddress
 	s.server.Handler = mux
-	for _, handler := range s.params.handler {
+	for _, handler := range s.params.Handler {
 		mux.HandleFunc(handler.Path, handler.Handler)
 	}
 	params.LC.Append(s)

@@ -16,40 +16,39 @@ type ExampleEvent struct {
 	Message string
 }
 
-// Observe implements stream.Observable.
-func (e ExampleEvent) Observe(ctx context.Context, next func(ExampleEvent), complete func(error)) {
-	panic("unimplemented")
-}
-
 type ExampleEvents interface {
 	stream.Observable[ExampleEvent]
 }
 
-type exampleEventResources struct {
-	stream.Observable[ExampleEvent]
-
-	emit     func(ExampleEvents)
-	complete func(error)
-}
+type exampleEventResources struct{}
 
 // Start implements cell.HookInterface.
-func (es exampleEventResources) Start(ctx cell.HookContext) error {
-	panic("unimplemented")
+func (es *exampleEventResources) Start(ctx cell.HookContext) error {
+	return nil
 }
 
 // Stop implements cell.HookInterface.
-func (es exampleEventResources) Stop(ctx cell.HookContext) error {
-	panic("unimplemented")
+func (es *exampleEventResources) Stop(ctx cell.HookContext) error {
+	return nil
 }
 
-func (es *exampleEventResources) emitter(ctx context.Context) error {
-	timer := time.NewTicker(500 * time.Millisecond)
-	select {
-	case <-ctx.Done():
-		return nil
-	case <-timer.C:
-		fmt.Println("working pool is doing something")
-		return nil
+// Observe implements stream.Observable.
+func (es *exampleEventResources) Observe(ctx context.Context, next func(ExampleEvent), complete func(error)) {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	defer func() {
+		if complete != nil {
+			complete(nil)
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			next(makeEvent())
+		}
 	}
 }
 
@@ -67,8 +66,7 @@ func makeEvent() ExampleEvent {
 }
 
 func newExampleEvents(lc cell.Lifecycle) ExampleEvents {
-	es := exampleEventResources{}
-	// do some business logic
+	es := &exampleEventResources{}
 	lc.Append(es)
 	return es
 }

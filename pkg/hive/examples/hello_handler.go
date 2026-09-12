@@ -15,7 +15,7 @@ var helloHandler = cell.Module(
 func newHelloHandler(exampleMetric exampleMetric) HTTPHandlerOptOut {
 	return HTTPHandlerOptOut{
 		HTTPHandler: HTTPHandler{
-			Path: "hello",
+			Path: "/hello",
 			Handler: func(w http.ResponseWriter, r *http.Request) {
 				exampleMetric.ExampleCounter.Inc()
 				w.WriteHeader(http.StatusOK)

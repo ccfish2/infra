@@ -11,7 +11,7 @@ type B struct{ A *A }
 func NewB(A *A) *B { return &B{A} }
 func NewA() *A     { return &A{} }
 func ShowB(B *B) {
-	fmt.Printf("%#v", B)
+	fmt.Printf("B: %#v", B)
 }
 
 // illustrating dynamically invoke dependencies
@@ -56,6 +56,7 @@ func (c *container) Provide(ctor any) {
 }
 
 func (c *container) construct(nm string) reflect.Value {
+	fmt.Printf("constructing %q\n", nm)
 	obj, ok := c.objects[nm]
 	if ok {
 		return obj
