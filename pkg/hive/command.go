@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Command constructs the cobra command for hive. The hive
+// command can be used to inspect the dependency graph
 func (h *Hive) Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "hive",
