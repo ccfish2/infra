@@ -1137,6 +1137,8 @@ const (
 
 	Gateway = "gateway"
 
+	GatewayClass = "GatewayClass"
+
 	Kind = "kind"
 
 	RequiredGVK = "requiredGVK"
