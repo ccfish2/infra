@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime/pprof"
 	"strconv"
 	"sync"
@@ -124,6 +125,7 @@ var _ cell.HookInterface = (*group)(nil)
 
 // Start implements the cell.HookInterface interface
 func (jg *group) Start(_ cell.HookContext) error {
+	fmt.Println("GROUP START:", len(jg.queuedJobs))
 	jg.mu.Lock()
 	defer jg.mu.Unlock()
 
@@ -136,7 +138,7 @@ func (jg *group) Start(_ cell.HookContext) error {
 		})
 	}
 	jg.queuedJobs = nil
-
+	fmt.Println("GROUP START RETURN")
 	return nil
 }
 
@@ -258,6 +260,8 @@ type jobOneShot struct {
 func (jos *jobOneShot) start(ctx context.Context, wg *sync.WaitGroup, scope cell.Scope, options options) {
 	defer wg.Done()
 
+	fmt.Println("ONESHOT ENTER:", jos.name)
+
 	for _, opt := range jos.opts {
 		opt(jos)
 	}
@@ -275,6 +279,7 @@ func (jos *jobOneShot) start(ctx context.Context, wg *sync.WaitGroup, scope cell
 	timer, cancel := inctimer.New()
 	defer cancel()
 
+	fmt.Println("ONESHOT BEFORE TIMER")
 	var err error
 	for i := 0; i <= jos.retry; i++ {
 		var timeout time.Duration
@@ -293,6 +298,7 @@ func (jos *jobOneShot) start(ctx context.Context, wg *sync.WaitGroup, scope cell
 		}
 
 		l.Debug("Starting one-shot job")
+		fmt.Println("Starting one-shot job")
 
 		if jos.metrics {
 			stat.Start()
@@ -316,6 +322,7 @@ func (jos *jobOneShot) start(ctx context.Context, wg *sync.WaitGroup, scope cell
 		}
 	}
 
+	fmt.Println("ONESHOT CALLING FN")
 	if options.shutdowner != nil && jos.shutdownOnError {
 		options.shutdowner.Shutdown(hive.ShutdownWithError(err))
 	}
