@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +22,16 @@ import (
 )
 
 type LogFormat string
+
+var (
+	LevelPanic = slog.LevelError + 8
+	LevelFatal = LevelPanic + 2
+)
+
+var (
+	levelPanicValue = slog.AnyValue(LevelPanic)
+	levelFatalValue = slog.AnyValue(LevelFatal)
+)
 
 const (
 	Syslog    = "syslog"
