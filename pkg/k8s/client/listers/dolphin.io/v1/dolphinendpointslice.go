@@ -18,10 +18,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DolphinEndpointSliceLister helps list DolphinEndpointSlices.
@@ -29,39 +29,19 @@ import (
 type DolphinEndpointSliceLister interface {
 	// List lists all DolphinEndpointSlices in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DolphinEndpointSlice, err error)
+	List(selector labels.Selector) (ret []*dolphiniov1.DolphinEndpointSlice, err error)
 	// Get retrieves the DolphinEndpointSlice from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.DolphinEndpointSlice, error)
+	Get(name string) (*dolphiniov1.DolphinEndpointSlice, error)
 	DolphinEndpointSliceListerExpansion
 }
 
 // dolphinEndpointSliceLister implements the DolphinEndpointSliceLister interface.
 type dolphinEndpointSliceLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*dolphiniov1.DolphinEndpointSlice]
 }
 
 // NewDolphinEndpointSliceLister returns a new DolphinEndpointSliceLister.
 func NewDolphinEndpointSliceLister(indexer cache.Indexer) DolphinEndpointSliceLister {
-	return &dolphinEndpointSliceLister{indexer: indexer}
-}
-
-// List lists all DolphinEndpointSlices in the indexer.
-func (s *dolphinEndpointSliceLister) List(selector labels.Selector) (ret []*v1.DolphinEndpointSlice, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DolphinEndpointSlice))
-	})
-	return ret, err
-}
-
-// Get retrieves the DolphinEndpointSlice from the index for a given name.
-func (s *dolphinEndpointSliceLister) Get(name string) (*v1.DolphinEndpointSlice, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("dolphinendpointslice"), name)
-	}
-	return obj.(*v1.DolphinEndpointSlice), nil
+	return &dolphinEndpointSliceLister{listers.New[*dolphiniov1.DolphinEndpointSlice](indexer, dolphiniov1.Resource("dolphinendpointslice"))}
 }

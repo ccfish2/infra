@@ -18,10 +18,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DolphinEndpointLister helps list DolphinEndpoints.
@@ -29,7 +29,7 @@ import (
 type DolphinEndpointLister interface {
 	// List lists all DolphinEndpoints in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DolphinEndpoint, err error)
+	List(selector labels.Selector) (ret []*dolphiniov1.DolphinEndpoint, err error)
 	// DolphinEndpoints returns an object that can list and get DolphinEndpoints.
 	DolphinEndpoints(namespace string) DolphinEndpointNamespaceLister
 	DolphinEndpointListerExpansion
@@ -37,25 +37,17 @@ type DolphinEndpointLister interface {
 
 // dolphinEndpointLister implements the DolphinEndpointLister interface.
 type dolphinEndpointLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*dolphiniov1.DolphinEndpoint]
 }
 
 // NewDolphinEndpointLister returns a new DolphinEndpointLister.
 func NewDolphinEndpointLister(indexer cache.Indexer) DolphinEndpointLister {
-	return &dolphinEndpointLister{indexer: indexer}
-}
-
-// List lists all DolphinEndpoints in the indexer.
-func (s *dolphinEndpointLister) List(selector labels.Selector) (ret []*v1.DolphinEndpoint, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DolphinEndpoint))
-	})
-	return ret, err
+	return &dolphinEndpointLister{listers.New[*dolphiniov1.DolphinEndpoint](indexer, dolphiniov1.Resource("dolphinendpoint"))}
 }
 
 // DolphinEndpoints returns an object that can list and get DolphinEndpoints.
 func (s *dolphinEndpointLister) DolphinEndpoints(namespace string) DolphinEndpointNamespaceLister {
-	return dolphinEndpointNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return dolphinEndpointNamespaceLister{listers.NewNamespaced[*dolphiniov1.DolphinEndpoint](s.ResourceIndexer, namespace)}
 }
 
 // DolphinEndpointNamespaceLister helps list and get DolphinEndpoints.
@@ -63,36 +55,15 @@ func (s *dolphinEndpointLister) DolphinEndpoints(namespace string) DolphinEndpoi
 type DolphinEndpointNamespaceLister interface {
 	// List lists all DolphinEndpoints in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DolphinEndpoint, err error)
+	List(selector labels.Selector) (ret []*dolphiniov1.DolphinEndpoint, err error)
 	// Get retrieves the DolphinEndpoint from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.DolphinEndpoint, error)
+	Get(name string) (*dolphiniov1.DolphinEndpoint, error)
 	DolphinEndpointNamespaceListerExpansion
 }
 
 // dolphinEndpointNamespaceLister implements the DolphinEndpointNamespaceLister
 // interface.
 type dolphinEndpointNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all DolphinEndpoints in the indexer for a given namespace.
-func (s dolphinEndpointNamespaceLister) List(selector labels.Selector) (ret []*v1.DolphinEndpoint, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DolphinEndpoint))
-	})
-	return ret, err
-}
-
-// Get retrieves the DolphinEndpoint from the indexer for a given namespace and name.
-func (s dolphinEndpointNamespaceLister) Get(name string) (*v1.DolphinEndpoint, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("dolphinendpoint"), name)
-	}
-	return obj.(*v1.DolphinEndpoint), nil
+	listers.ResourceIndexer[*dolphiniov1.DolphinEndpoint]
 }

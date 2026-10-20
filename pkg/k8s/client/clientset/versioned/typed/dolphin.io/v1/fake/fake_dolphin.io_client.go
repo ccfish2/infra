@@ -28,23 +28,23 @@ type FakeDolphinV1 struct {
 }
 
 func (c *FakeDolphinV1) DolphinEndpoints(namespace string) v1.DolphinEndpointInterface {
-	return &FakeDolphinEndpoints{c, namespace}
+	return newFakeDolphinEndpoints(c, namespace)
 }
 
 func (c *FakeDolphinV1) DolphinEndpointSlices() v1.DolphinEndpointSliceInterface {
-	return &FakeDolphinEndpointSlices{c}
+	return newFakeDolphinEndpointSlices(c)
 }
 
 func (c *FakeDolphinV1) DolphinEnvoyConfigs(namespace string) v1.DolphinEnvoyConfigInterface {
-	return &FakeDolphinEnvoyConfigs{c, namespace}
+	return newFakeDolphinEnvoyConfigs(c, namespace)
 }
 
 func (c *FakeDolphinV1) DolphinIdentities() v1.DolphinIdentityInterface {
-	return &FakeDolphinIdentities{c}
+	return newFakeDolphinIdentities(c)
 }
 
 func (c *FakeDolphinV1) DolphinNodes() v1.DolphinNodeInterface {
-	return &FakeDolphinNodes{c}
+	return newFakeDolphinNodes(c)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

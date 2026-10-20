@@ -72,16 +72,8 @@ type Clientset struct {
 	tracker   testing.ObjectTracker
 }
 
-func (c *Clientset) Discovery() discovery.DiscoveryInterfaces {
+func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	return c.discovery
-}
-
-func (c *Clientset) DolphinV1() dolphinv1.DolphinV1Interface {
-	return &fakedolphinv1.FakeDolphinV1{Fake: &c.Fake}
-}
-
-func (c *Clientset) DolphinV2alpha1() dolphinv2alpha1.DolphinV2alpha1Interface {
-	return &fakedolphinv2alpha1.FakeDolphinV2alpha1{Fake: &c.Fake}
 }
 
 func (c *Clientset) Tracker() testing.ObjectTracker {
@@ -103,3 +95,13 @@ var (
 	_ clientset.Interface = &Clientset{}
 	_ testing.FakeClient  = &Clientset{}
 )
+
+// DolphinV1 retrieves the DolphinV1Client
+func (c *Clientset) DolphinV1() dolphinv1.DolphinV1Interface {
+	return &fakedolphinv1.FakeDolphinV1{Fake: &c.Fake}
+}
+
+// DolphinV2alpha1 retrieves the DolphinV2alpha1Client
+func (c *Clientset) DolphinV2alpha1() dolphinv2alpha1.DolphinV2alpha1Interface {
+	return &fakedolphinv2alpha1.FakeDolphinV2alpha1{Fake: &c.Fake}
+}
