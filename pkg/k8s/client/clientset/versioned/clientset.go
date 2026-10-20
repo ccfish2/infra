@@ -29,7 +29,7 @@ import (
 )
 
 type Interface interface {
-	Discovery() discovery.DiscoveryInterfaces
+	Discovery() discovery.DiscoveryInterface
 	DolphinV1() dolphinv1.DolphinV1Interface
 	DolphinV2alpha1() dolphinv2alpha1.DolphinV2alpha1Interface
 }
@@ -52,7 +52,7 @@ func (c *Clientset) DolphinV2alpha1() dolphinv2alpha1.DolphinV2alpha1Interface {
 }
 
 // Discovery retrieves the DiscoveryClient
-func (c *Clientset) Discovery() discovery.DiscoveryInterfaces {
+func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	if c == nil {
 		return nil
 	}
@@ -99,7 +99,6 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
-
 	cs.dolphinV2alpha1, err = dolphinv2alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err

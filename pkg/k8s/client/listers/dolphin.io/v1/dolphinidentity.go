@@ -18,10 +18,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/apis/dolphin.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DolphinIdentityLister helps list DolphinIdentities.
@@ -29,39 +29,19 @@ import (
 type DolphinIdentityLister interface {
 	// List lists all DolphinIdentities in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DolphinIdentity, err error)
+	List(selector labels.Selector) (ret []*dolphiniov1.DolphinIdentity, err error)
 	// Get retrieves the DolphinIdentity from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.DolphinIdentity, error)
+	Get(name string) (*dolphiniov1.DolphinIdentity, error)
 	DolphinIdentityListerExpansion
 }
 
 // dolphinIdentityLister implements the DolphinIdentityLister interface.
 type dolphinIdentityLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*dolphiniov1.DolphinIdentity]
 }
 
 // NewDolphinIdentityLister returns a new DolphinIdentityLister.
 func NewDolphinIdentityLister(indexer cache.Indexer) DolphinIdentityLister {
-	return &dolphinIdentityLister{indexer: indexer}
-}
-
-// List lists all DolphinIdentities in the indexer.
-func (s *dolphinIdentityLister) List(selector labels.Selector) (ret []*v1.DolphinIdentity, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DolphinIdentity))
-	})
-	return ret, err
-}
-
-// Get retrieves the DolphinIdentity from the index for a given name.
-func (s *dolphinIdentityLister) Get(name string) (*v1.DolphinIdentity, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("dolphinidentity"), name)
-	}
-	return obj.(*v1.DolphinIdentity), nil
+	return &dolphinIdentityLister{listers.New[*dolphiniov1.DolphinIdentity](indexer, dolphiniov1.Resource("dolphinidentity"))}
 }
