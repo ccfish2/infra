@@ -27,16 +27,45 @@ import (
 	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/client/listers/dolphin.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // DolphinEndpointSliceInformer provides access to a shared informer and lister for
-// DolphinEndpointSlices.
+// DolphinEndpointSlices. Prefer using the type-safe variant (see [TypedDolphinEndpointSliceInformer]).
 type DolphinEndpointSliceInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() dolphiniov1.DolphinEndpointSliceLister
 }
+
+// TypedDolphinEndpointSliceInformer provides access to a shared informer and lister for
+// DolphinEndpointSlices, including the type-safe TypedInformer variant.
+// It is a superset of DolphinEndpointSliceInformer.
+type TypedDolphinEndpointSliceInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() DolphinEndpointSliceIndexInformer
+	Lister() dolphiniov1.DolphinEndpointSliceLister
+}
+
+// DolphinEndpointSliceIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type DolphinEndpointSliceIndexInformer cache.TypedSharedIndexInformer[*apisdolphiniov1.DolphinEndpointSlice]
+
+// DolphinEndpointSliceHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for DolphinEndpointSlice.
+type DolphinEndpointSliceHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisdolphiniov1.DolphinEndpointSlice]
+
+// DolphinEndpointSliceDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for DolphinEndpointSlice.
+type DolphinEndpointSliceDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisdolphiniov1.DolphinEndpointSlice]
+
+// DolphinEndpointSliceFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for DolphinEndpointSlice.
+type DolphinEndpointSliceFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisdolphiniov1.DolphinEndpointSlice]
+
+// DolphinEndpointSliceIndexers is a specialization of [cache.TypedIndexers] for DolphinEndpointSlice.
+type DolphinEndpointSliceIndexers = cache.TypedIndexers[*apisdolphiniov1.DolphinEndpointSlice]
+
+// DeletedDolphinEndpointSlice is a specialization of [cache.DeletedObject] for DolphinEndpointSlice.
+type DeletedDolphinEndpointSlice = cache.DeletedObject[*apisdolphiniov1.DolphinEndpointSlice]
 
 type dolphinEndpointSliceInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -46,55 +75,132 @@ type dolphinEndpointSliceInformer struct {
 // NewDolphinEndpointSliceInformer constructs a new informer for DolphinEndpointSlice type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDolphinEndpointSliceInformer]).
 func NewDolphinEndpointSliceInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredDolphinEndpointSliceInformer(client, resyncPeriod, indexers, nil)
+	return NewDolphinEndpointSliceInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedDolphinEndpointSliceInformer constructs a new informer for DolphinEndpointSlice type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDolphinEndpointSliceInformer(client versioned.Interface, resyncPeriod time.Duration, indexers DolphinEndpointSliceIndexers) DolphinEndpointSliceIndexInformer {
+	return NewTypedDolphinEndpointSliceInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredDolphinEndpointSliceInformer constructs a new informer for DolphinEndpointSlice type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredDolphinEndpointSliceInformer]).
 func NewFilteredDolphinEndpointSliceInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedDolphinEndpointSliceInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredDolphinEndpointSliceInformer constructs a new informer for DolphinEndpointSlice type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredDolphinEndpointSliceInformer(client versioned.Interface, resyncPeriod time.Duration, indexers DolphinEndpointSliceIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) DolphinEndpointSliceIndexInformer {
+	return NewTypedDolphinEndpointSliceInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewDolphinEndpointSliceInformerWithOptions constructs a new informer for DolphinEndpointSlice type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDolphinEndpointSliceInformerWithOptions]).
+func NewDolphinEndpointSliceInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedDolphinEndpointSliceInformerWithOptions(client, options)
+}
+
+// NewTypedDolphinEndpointSliceInformerWithOptions constructs a new informer for DolphinEndpointSlice type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDolphinEndpointSliceInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) DolphinEndpointSliceIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "dolphin.io", Version: "v1", Resource: "dolphinendpointslices"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov1.DolphinEndpointSlice](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV1().DolphinEndpointSlices().List(context.Background(), options)
+				return client.DolphinV1().DolphinEndpointSlices().List(context.Background(), opts)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV1().DolphinEndpointSlices().Watch(context.Background(), options)
+				return client.DolphinV1().DolphinEndpointSlices().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV1().DolphinEndpointSlices().List(ctx, options)
+				return client.DolphinV1().DolphinEndpointSlices().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV1().DolphinEndpointSlices().Watch(ctx, options)
+				return client.DolphinV1().DolphinEndpointSlices().Watch(ctx, opts)
 			},
 		}, client),
 		&apisdolphiniov1.DolphinEndpointSlice{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *dolphinEndpointSliceInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredDolphinEndpointSliceInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedDolphinEndpointSliceInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *dolphinEndpointSliceInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisdolphiniov1.DolphinEndpointSlice{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *dolphinEndpointSliceInformer) TypedInformer() DolphinEndpointSliceIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov1.DolphinEndpointSlice](f.factory.InformerFor(&apisdolphiniov1.DolphinEndpointSlice{}, f.defaultInformer))
 }
 
 func (f *dolphinEndpointSliceInformer) Lister() dolphiniov1.DolphinEndpointSliceLister {
 	return dolphiniov1.NewDolphinEndpointSliceLister(f.Informer().GetIndexer())
+}
+
+// ToTypedDolphinEndpointSliceInformer converts an untyped informer into a TypedDolphinEndpointSliceInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DolphinEndpointSlice. If that is not the case, calling type-safe methods of the returned
+// TypedDolphinEndpointSliceInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedDolphinEndpointSliceInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedDolphinEndpointSliceInformer(informer DolphinEndpointSliceInformer) TypedDolphinEndpointSliceInformer {
+	if informer, ok := informer.(TypedDolphinEndpointSliceInformer); ok {
+		return informer
+	}
+	return &dolphinEndpointSliceTypedInformerAdapter{informer}
+}
+
+type dolphinEndpointSliceTypedInformerAdapter struct {
+	DolphinEndpointSliceInformer
+}
+
+func (a *dolphinEndpointSliceTypedInformerAdapter) TypedInformer() DolphinEndpointSliceIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov1.DolphinEndpointSlice](a.Informer())
+}
+
+// ToDolphinEndpointSliceIndexInformer converts an untyped informer into a DolphinEndpointSliceIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DolphinEndpointSlice. If that is not the case, calling type-safe methods of the returned
+// DolphinEndpointSliceIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a DolphinEndpointSliceIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToDolphinEndpointSliceIndexInformer(informer cache.SharedIndexInformer) DolphinEndpointSliceIndexInformer {
+	if informer, ok := informer.(DolphinEndpointSliceIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov1.DolphinEndpointSlice](informer)
 }

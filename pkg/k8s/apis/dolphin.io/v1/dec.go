@@ -55,7 +55,7 @@ type DolphinEnvoyConfigSpec struct {
 	// +kubebuilder:validation:Optional
 	BackendServices []*Service `json:"backendServices,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	Resources []XDSResource `json:"resources,omitempty"`
 
 	// +kubebuilder:validation:Optional

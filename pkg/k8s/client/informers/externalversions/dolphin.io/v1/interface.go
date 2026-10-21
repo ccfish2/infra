@@ -24,15 +24,15 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// DolphinEndpoints returns a DolphinEndpointInformer.
-	DolphinEndpoints() DolphinEndpointInformer
+	DolphinEndpoints() TypedDolphinEndpointInformer
 	// DolphinEndpointSlices returns a DolphinEndpointSliceInformer.
-	DolphinEndpointSlices() DolphinEndpointSliceInformer
+	DolphinEndpointSlices() TypedDolphinEndpointSliceInformer
 	// DolphinEnvoyConfigs returns a DolphinEnvoyConfigInformer.
-	DolphinEnvoyConfigs() DolphinEnvoyConfigInformer
+	DolphinEnvoyConfigs() TypedDolphinEnvoyConfigInformer
 	// DolphinIdentities returns a DolphinIdentityInformer.
-	DolphinIdentities() DolphinIdentityInformer
+	DolphinIdentities() TypedDolphinIdentityInformer
 	// DolphinNodes returns a DolphinNodeInformer.
-	DolphinNodes() DolphinNodeInformer
+	DolphinNodes() TypedDolphinNodeInformer
 }
 
 type version struct {
@@ -46,27 +46,27 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// DolphinEndpoints returns a DolphinEndpointInformer.
-func (v *version) DolphinEndpoints() DolphinEndpointInformer {
+// DolphinEndpoints returns a TypedDolphinEndpointInformer.
+func (v *version) DolphinEndpoints() TypedDolphinEndpointInformer {
 	return &dolphinEndpointInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// DolphinEndpointSlices returns a DolphinEndpointSliceInformer.
-func (v *version) DolphinEndpointSlices() DolphinEndpointSliceInformer {
+// DolphinEndpointSlices returns a TypedDolphinEndpointSliceInformer.
+func (v *version) DolphinEndpointSlices() TypedDolphinEndpointSliceInformer {
 	return &dolphinEndpointSliceInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// DolphinEnvoyConfigs returns a DolphinEnvoyConfigInformer.
-func (v *version) DolphinEnvoyConfigs() DolphinEnvoyConfigInformer {
+// DolphinEnvoyConfigs returns a TypedDolphinEnvoyConfigInformer.
+func (v *version) DolphinEnvoyConfigs() TypedDolphinEnvoyConfigInformer {
 	return &dolphinEnvoyConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// DolphinIdentities returns a DolphinIdentityInformer.
-func (v *version) DolphinIdentities() DolphinIdentityInformer {
+// DolphinIdentities returns a TypedDolphinIdentityInformer.
+func (v *version) DolphinIdentities() TypedDolphinIdentityInformer {
 	return &dolphinIdentityInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// DolphinNodes returns a DolphinNodeInformer.
-func (v *version) DolphinNodes() DolphinNodeInformer {
+// DolphinNodes returns a TypedDolphinNodeInformer.
+func (v *version) DolphinNodes() TypedDolphinNodeInformer {
 	return &dolphinNodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

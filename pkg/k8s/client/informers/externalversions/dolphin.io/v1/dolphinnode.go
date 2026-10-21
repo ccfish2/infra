@@ -27,16 +27,45 @@ import (
 	dolphiniov1 "github.com/ccfish2/infra/pkg/k8s/client/listers/dolphin.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // DolphinNodeInformer provides access to a shared informer and lister for
-// DolphinNodes.
+// DolphinNodes. Prefer using the type-safe variant (see [TypedDolphinNodeInformer]).
 type DolphinNodeInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() dolphiniov1.DolphinNodeLister
 }
+
+// TypedDolphinNodeInformer provides access to a shared informer and lister for
+// DolphinNodes, including the type-safe TypedInformer variant.
+// It is a superset of DolphinNodeInformer.
+type TypedDolphinNodeInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() DolphinNodeIndexInformer
+	Lister() dolphiniov1.DolphinNodeLister
+}
+
+// DolphinNodeIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type DolphinNodeIndexInformer cache.TypedSharedIndexInformer[*apisdolphiniov1.DolphinNode]
+
+// DolphinNodeHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for DolphinNode.
+type DolphinNodeHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisdolphiniov1.DolphinNode]
+
+// DolphinNodeDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for DolphinNode.
+type DolphinNodeDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisdolphiniov1.DolphinNode]
+
+// DolphinNodeFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for DolphinNode.
+type DolphinNodeFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisdolphiniov1.DolphinNode]
+
+// DolphinNodeIndexers is a specialization of [cache.TypedIndexers] for DolphinNode.
+type DolphinNodeIndexers = cache.TypedIndexers[*apisdolphiniov1.DolphinNode]
+
+// DeletedDolphinNode is a specialization of [cache.DeletedObject] for DolphinNode.
+type DeletedDolphinNode = cache.DeletedObject[*apisdolphiniov1.DolphinNode]
 
 type dolphinNodeInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -46,55 +75,132 @@ type dolphinNodeInformer struct {
 // NewDolphinNodeInformer constructs a new informer for DolphinNode type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDolphinNodeInformer]).
 func NewDolphinNodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredDolphinNodeInformer(client, resyncPeriod, indexers, nil)
+	return NewDolphinNodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedDolphinNodeInformer constructs a new informer for DolphinNode type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDolphinNodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers DolphinNodeIndexers) DolphinNodeIndexInformer {
+	return NewTypedDolphinNodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredDolphinNodeInformer constructs a new informer for DolphinNode type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredDolphinNodeInformer]).
 func NewFilteredDolphinNodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedDolphinNodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredDolphinNodeInformer constructs a new informer for DolphinNode type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredDolphinNodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers DolphinNodeIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) DolphinNodeIndexInformer {
+	return NewTypedDolphinNodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewDolphinNodeInformerWithOptions constructs a new informer for DolphinNode type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDolphinNodeInformerWithOptions]).
+func NewDolphinNodeInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedDolphinNodeInformerWithOptions(client, options)
+}
+
+// NewTypedDolphinNodeInformerWithOptions constructs a new informer for DolphinNode type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDolphinNodeInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) DolphinNodeIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "dolphin.io", Version: "v1", Resource: "dolphinnodes"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov1.DolphinNode](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV1().DolphinNodes().List(context.Background(), options)
+				return client.DolphinV1().DolphinNodes().List(context.Background(), opts)
 			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV1().DolphinNodes().Watch(context.Background(), options)
+				return client.DolphinV1().DolphinNodes().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV1().DolphinNodes().List(ctx, options)
+				return client.DolphinV1().DolphinNodes().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV1().DolphinNodes().Watch(ctx, options)
+				return client.DolphinV1().DolphinNodes().Watch(ctx, opts)
 			},
 		}, client),
 		&apisdolphiniov1.DolphinNode{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *dolphinNodeInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredDolphinNodeInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedDolphinNodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *dolphinNodeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisdolphiniov1.DolphinNode{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *dolphinNodeInformer) TypedInformer() DolphinNodeIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov1.DolphinNode](f.factory.InformerFor(&apisdolphiniov1.DolphinNode{}, f.defaultInformer))
 }
 
 func (f *dolphinNodeInformer) Lister() dolphiniov1.DolphinNodeLister {
 	return dolphiniov1.NewDolphinNodeLister(f.Informer().GetIndexer())
+}
+
+// ToTypedDolphinNodeInformer converts an untyped informer into a TypedDolphinNodeInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DolphinNode. If that is not the case, calling type-safe methods of the returned
+// TypedDolphinNodeInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedDolphinNodeInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedDolphinNodeInformer(informer DolphinNodeInformer) TypedDolphinNodeInformer {
+	if informer, ok := informer.(TypedDolphinNodeInformer); ok {
+		return informer
+	}
+	return &dolphinNodeTypedInformerAdapter{informer}
+}
+
+type dolphinNodeTypedInformerAdapter struct {
+	DolphinNodeInformer
+}
+
+func (a *dolphinNodeTypedInformerAdapter) TypedInformer() DolphinNodeIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov1.DolphinNode](a.Informer())
+}
+
+// ToDolphinNodeIndexInformer converts an untyped informer into a DolphinNodeIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DolphinNode. If that is not the case, calling type-safe methods of the returned
+// DolphinNodeIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a DolphinNodeIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToDolphinNodeIndexInformer(informer cache.SharedIndexInformer) DolphinNodeIndexInformer {
+	if informer, ok := informer.(DolphinNodeIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov1.DolphinNode](informer)
 }

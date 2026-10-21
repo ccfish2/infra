@@ -24,7 +24,7 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// DolphinGatewayClassConfigs returns a DolphinGatewayClassConfigInformer.
-	DolphinGatewayClassConfigs() DolphinGatewayClassConfigInformer
+	DolphinGatewayClassConfigs() TypedDolphinGatewayClassConfigInformer
 }
 
 type version struct {
@@ -38,7 +38,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// DolphinGatewayClassConfigs returns a DolphinGatewayClassConfigInformer.
-func (v *version) DolphinGatewayClassConfigs() DolphinGatewayClassConfigInformer {
+// DolphinGatewayClassConfigs returns a TypedDolphinGatewayClassConfigInformer.
+func (v *version) DolphinGatewayClassConfigs() TypedDolphinGatewayClassConfigInformer {
 	return &dolphinGatewayClassConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

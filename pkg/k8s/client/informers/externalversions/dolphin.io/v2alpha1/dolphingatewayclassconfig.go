@@ -27,16 +27,45 @@ import (
 	dolphiniov2alpha1 "github.com/ccfish2/infra/pkg/k8s/client/listers/dolphin.io/v2alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // DolphinGatewayClassConfigInformer provides access to a shared informer and lister for
-// DolphinGatewayClassConfigs.
+// DolphinGatewayClassConfigs. Prefer using the type-safe variant (see [TypedDolphinGatewayClassConfigInformer]).
 type DolphinGatewayClassConfigInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() dolphiniov2alpha1.DolphinGatewayClassConfigLister
 }
+
+// TypedDolphinGatewayClassConfigInformer provides access to a shared informer and lister for
+// DolphinGatewayClassConfigs, including the type-safe TypedInformer variant.
+// It is a superset of DolphinGatewayClassConfigInformer.
+type TypedDolphinGatewayClassConfigInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() DolphinGatewayClassConfigIndexInformer
+	Lister() dolphiniov2alpha1.DolphinGatewayClassConfigLister
+}
+
+// DolphinGatewayClassConfigIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type DolphinGatewayClassConfigIndexInformer cache.TypedSharedIndexInformer[*apisdolphiniov2alpha1.DolphinGatewayClassConfig]
+
+// DolphinGatewayClassConfigHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for DolphinGatewayClassConfig.
+type DolphinGatewayClassConfigHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisdolphiniov2alpha1.DolphinGatewayClassConfig]
+
+// DolphinGatewayClassConfigDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for DolphinGatewayClassConfig.
+type DolphinGatewayClassConfigDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisdolphiniov2alpha1.DolphinGatewayClassConfig]
+
+// DolphinGatewayClassConfigFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for DolphinGatewayClassConfig.
+type DolphinGatewayClassConfigFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisdolphiniov2alpha1.DolphinGatewayClassConfig]
+
+// DolphinGatewayClassConfigIndexers is a specialization of [cache.TypedIndexers] for DolphinGatewayClassConfig.
+type DolphinGatewayClassConfigIndexers = cache.TypedIndexers[*apisdolphiniov2alpha1.DolphinGatewayClassConfig]
+
+// DeletedDolphinGatewayClassConfig is a specialization of [cache.DeletedObject] for DolphinGatewayClassConfig.
+type DeletedDolphinGatewayClassConfig = cache.DeletedObject[*apisdolphiniov2alpha1.DolphinGatewayClassConfig]
 
 type dolphinGatewayClassConfigInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type dolphinGatewayClassConfigInformer struct {
 // NewDolphinGatewayClassConfigInformer constructs a new informer for DolphinGatewayClassConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDolphinGatewayClassConfigInformer]).
 func NewDolphinGatewayClassConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredDolphinGatewayClassConfigInformer(client, namespace, resyncPeriod, indexers, nil)
+	return NewDolphinGatewayClassConfigInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedDolphinGatewayClassConfigInformer constructs a new informer for DolphinGatewayClassConfig type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDolphinGatewayClassConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DolphinGatewayClassConfigIndexers) DolphinGatewayClassConfigIndexInformer {
+	return NewTypedDolphinGatewayClassConfigInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredDolphinGatewayClassConfigInformer constructs a new informer for DolphinGatewayClassConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredDolphinGatewayClassConfigInformer]).
 func NewFilteredDolphinGatewayClassConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedDolphinGatewayClassConfigInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredDolphinGatewayClassConfigInformer constructs a new informer for DolphinGatewayClassConfig type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredDolphinGatewayClassConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DolphinGatewayClassConfigIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) DolphinGatewayClassConfigIndexInformer {
+	return NewTypedDolphinGatewayClassConfigInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewDolphinGatewayClassConfigInformerWithOptions constructs a new informer for DolphinGatewayClassConfig type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDolphinGatewayClassConfigInformerWithOptions]).
+func NewDolphinGatewayClassConfigInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedDolphinGatewayClassConfigInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedDolphinGatewayClassConfigInformerWithOptions constructs a new informer for DolphinGatewayClassConfig type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDolphinGatewayClassConfigInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) DolphinGatewayClassConfigIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "dolphin.io", Version: "v2alpha1", Resource: "dolphingatewayclassconfigs"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov2alpha1.DolphinGatewayClassConfig](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV2alpha1().DolphinGatewayClassConfigs(namespace).List(context.Background(), options)
+				return client.DolphinV2alpha1().DolphinGatewayClassConfigs(namespace).List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV2alpha1().DolphinGatewayClassConfigs(namespace).Watch(context.Background(), options)
+				return client.DolphinV2alpha1().DolphinGatewayClassConfigs(namespace).Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV2alpha1().DolphinGatewayClassConfigs(namespace).List(ctx, options)
+				return client.DolphinV2alpha1().DolphinGatewayClassConfigs(namespace).List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.DolphinV2alpha1().DolphinGatewayClassConfigs(namespace).Watch(ctx, options)
+				return client.DolphinV2alpha1().DolphinGatewayClassConfigs(namespace).Watch(ctx, opts)
 			},
 		}, client),
 		&apisdolphiniov2alpha1.DolphinGatewayClassConfig{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *dolphinGatewayClassConfigInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredDolphinGatewayClassConfigInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedDolphinGatewayClassConfigInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *dolphinGatewayClassConfigInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisdolphiniov2alpha1.DolphinGatewayClassConfig{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *dolphinGatewayClassConfigInformer) TypedInformer() DolphinGatewayClassConfigIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov2alpha1.DolphinGatewayClassConfig](f.factory.InformerFor(&apisdolphiniov2alpha1.DolphinGatewayClassConfig{}, f.defaultInformer))
 }
 
 func (f *dolphinGatewayClassConfigInformer) Lister() dolphiniov2alpha1.DolphinGatewayClassConfigLister {
 	return dolphiniov2alpha1.NewDolphinGatewayClassConfigLister(f.Informer().GetIndexer())
+}
+
+// ToTypedDolphinGatewayClassConfigInformer converts an untyped informer into a TypedDolphinGatewayClassConfigInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DolphinGatewayClassConfig. If that is not the case, calling type-safe methods of the returned
+// TypedDolphinGatewayClassConfigInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedDolphinGatewayClassConfigInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedDolphinGatewayClassConfigInformer(informer DolphinGatewayClassConfigInformer) TypedDolphinGatewayClassConfigInformer {
+	if informer, ok := informer.(TypedDolphinGatewayClassConfigInformer); ok {
+		return informer
+	}
+	return &dolphinGatewayClassConfigTypedInformerAdapter{informer}
+}
+
+type dolphinGatewayClassConfigTypedInformerAdapter struct {
+	DolphinGatewayClassConfigInformer
+}
+
+func (a *dolphinGatewayClassConfigTypedInformerAdapter) TypedInformer() DolphinGatewayClassConfigIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov2alpha1.DolphinGatewayClassConfig](a.Informer())
+}
+
+// ToDolphinGatewayClassConfigIndexInformer converts an untyped informer into a DolphinGatewayClassConfigIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DolphinGatewayClassConfig. If that is not the case, calling type-safe methods of the returned
+// DolphinGatewayClassConfigIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a DolphinGatewayClassConfigIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToDolphinGatewayClassConfigIndexInformer(informer cache.SharedIndexInformer) DolphinGatewayClassConfigIndexInformer {
+	if informer, ok := informer.(DolphinGatewayClassConfigIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisdolphiniov2alpha1.DolphinGatewayClassConfig](informer)
 }
