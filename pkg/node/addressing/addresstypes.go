@@ -25,7 +25,7 @@ func ExtractNodeIP[T Address](addrs []T, ipv6 bool) net.IP {
 		if parsed == nil || err != nil {
 			continue
 		}
-		if (ipv6 && parsed.To4() == nil) || (!ipv6 && parsed.To4() != nil) {
+		if (ipv6 && parsed.To4() != nil) || (!ipv6 && parsed.To4() == nil) {
 			continue
 		}
 		switch addr.AddrType() {
