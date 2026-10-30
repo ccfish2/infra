@@ -48,10 +48,16 @@ type Health interface {
 	Get(FullModuleID) (Status, error)
 	Stats() map[Level]uint64
 
+	OK(status string)
+	Stopped(reason string)
+	Degraded(reason string, err error)
+
 	Stop(context.Context) error
 	Subscribe(context.Context, func(Update), func(error))
 	forModule(FullModuleID) statusNodeReporter
 	processed() uint64
+	NewScope(name string) Health
+	Close()
 }
 
 type StatusResult struct {
@@ -214,6 +220,16 @@ func (p *healthProvider) Stats() map[Level]uint64 {
 	p.mu.Unlock()
 	return n
 }
+
+func (p *healthProvider) OK(string) {}
+
+func (p *healthProvider) Stopped(string) {}
+
+func (p *healthProvider) Degraded(string, error) {}
+
+func (p *healthProvider) NewScope(string) Health { return p }
+
+func (p *healthProvider) Close() {}
 
 type healthProvider struct {
 	mu lock.RWMutex

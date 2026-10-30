@@ -19,6 +19,11 @@ type HookInterface interface {
 	Stop(HookContext) error
 }
 
+type HookDescriptiveInterface interface {
+	HookInterface
+	HookInfo() string
+}
+
 type Lifecycle interface {
 	Append(HookInterface)
 

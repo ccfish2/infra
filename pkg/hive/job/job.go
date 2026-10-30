@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"runtime/pprof"
 	"strconv"
 	"sync"
@@ -12,64 +13,104 @@ import (
 	"github.com/ccfish2/infra/pkg/hive"
 	"github.com/ccfish2/infra/pkg/hive/cell"
 	"github.com/ccfish2/infra/pkg/hive/internal"
-	"github.com/ccfish2/infra/pkg/inctimer"
 	"github.com/ccfish2/infra/pkg/lock"
-	"github.com/ccfish2/infra/pkg/spanstat"
 	"github.com/ccfish2/infra/pkg/stream"
 	"github.com/sirupsen/logrus"
-	"k8s.io/client-go/util/workqueue"
 )
 
 var Cell = cell.Module(
 	"jobs",
-	"Jobs",
+	"Managed background goroutines and timers",
 	cell.Provide(newRegistry),
-	cell.Metric(newJobMetrics),
 )
 
 type Registry interface {
-	NewGroup(scope cell.Scope, opts ...groupOpt) Group
+	NewGroup(health cell.Health, opts ...groupOpt) Group
+	WithLifecycle(lifecycle cell.Lifecycle) Registry
 }
 
 type registry struct {
 	logger     logrus.FieldLogger
+	slogger    *slog.Logger
 	shutdowner hive.Shutdowner
+
+	// Jobs that are added before the registry is started are appended here
+	appLifecycle     cell.Lifecycle
+	runtimeLifecycle jobLifecycle
 
 	metrics *jobMetrics
 
-	mu     lock.Mutex
-	groups []Group
+	mu      lock.Mutex
+	groups  []Group
+	started bool
 }
+
+var _ cell.HookInterface = (*registry)(nil)
 
 func newRegistry(
 	logger logrus.FieldLogger,
 	shutdowner hive.Shutdowner,
-	metrics *jobMetrics,
+	lc cell.Lifecycle,
 ) Registry {
-	return &registry{
-		logger:     logger,
-		shutdowner: shutdowner,
-		metrics:    metrics,
+	r := &registry{
+		logger:       logger,
+		shutdowner:   shutdowner,
+		appLifecycle: lc,
+		slogger:      slog.New(slog.Default().Handler()),
 	}
+	lc.Append(r)
+	return r
 }
 
-func (c *registry) NewGroup(scope cell.Scope, opts ...groupOpt) Group {
+func (c *registry) Start(cell.HookContext) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.started {
+		return nil
+	}
+	c.started = true
+	return nil
+}
+
+func (c *registry) Stop(ctx cell.HookContext) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.started {
+		return nil
+	}
+	return c.runtimeLifecycle.stop(ctx, c.slogger)
+}
+
+func (c *registry) PreStopHookMarker() {}
+
+func (c *registry) WithLifecycle(lifecycle cell.Lifecycle) Registry {
+	r := &registry{
+		logger:       c.logger,
+		shutdowner:   c.shutdowner,
+		appLifecycle: lifecycle,
+	}
+	lifecycle.Append(r)
+	return r
+}
+
+func (c *registry) NewGroup(health cell.Health, opts ...groupOpt) Group {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	var options options
 	options.logger = c.logger
 	options.shutdowner = c.shutdowner
-	options.metrics = c.metrics
+	options.slog = c.slogger
 
 	for _, opt := range opts {
 		opt(&options)
 	}
 
 	g := &group{
-		options: options,
-		wg:      &sync.WaitGroup{},
-		scope:   scope,
+		registry: c,
+		options:  options,
+		health:   health,
 	}
 
 	c.groups = append(c.groups, g)
@@ -77,34 +118,191 @@ func (c *registry) NewGroup(scope cell.Scope, opts ...groupOpt) Group {
 	return g
 }
 
+func (c *registry) addJobs(health cell.Health, opts options, jobs ...Job) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !c.started {
+		for _, job := range jobs {
+			c.appLifecycle.Append(&queuedJob{
+				registry: c,
+				job:      job,
+				health:   health,
+				options:  opts,
+			})
+		}
+		return
+	}
+
+	for _, job := range jobs {
+		c.runtimeLifecycle.insertAndStart(
+			&queuedJob{
+				registry:   c,
+				job:        job,
+				health:     health,
+				options:    opts,
+				runtimeJob: true,
+			},
+		)
+	}
+}
+
+// tracks jobs started after registration.
+// and removes the jobs before registration stop
+type jobLifecycle struct {
+	mu sync.Mutex
+
+	// jobs is a doubly linked-list of started jobs. The head is the latest
+	// started jobs, e.g. they're in the order they should be stopped.
+	jobs *queuedJob
+
+	// stopped is true if the lifecycle has been stopped and no new jobs
+	// can be added.
+	stopped bool
+}
+
+func (r *jobLifecycle) insertAndStart(job *queuedJob) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.stopped {
+		return
+	}
+
+	if r.jobs != nil {
+		r.jobs.prev = job
+	}
+	job.next = r.jobs
+	r.jobs = job
+	job.Start(context.Background())
+}
+
+func (r *jobLifecycle) remove(qj *queuedJob) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.jobs == nil {
+		qj.prev = nil
+		qj.next = nil
+		return
+	}
+
+	if qj.next != nil {
+		qj.next.prev = qj.prev
+	}
+	if qj == r.jobs {
+		r.jobs = qj.next
+	} else if qj.prev != nil {
+		qj.prev.next = qj.next
+	}
+	qj.prev = nil
+	qj.next = nil
+}
+
+func (r *jobLifecycle) stop(ctx cell.HookContext, log *slog.Logger) error {
+	// Collect jobs to stop and unlink them. We must stop them without holding the
+	// lock as [queuedJob.Stop] will try to call [jobLifecycle.remove].
+	var jobsToStop []*queuedJob
+	r.mu.Lock()
+	var next *queuedJob
+	for job := r.jobs; job != nil; job = next {
+		next = job.next
+		job.next = nil
+		job.prev = nil
+		jobsToStop = append(jobsToStop, job)
+	}
+	r.jobs = nil
+	r.stopped = true
+	r.mu.Unlock()
+	for _, job := range jobsToStop {
+		job.Stop(ctx)
+		if ctx.Err() != nil {
+			log.Error("Stop cancelled while waiting for job to stop",
+				"job",
+				job.job.info())
+			break
+		}
+	}
+	return ctx.Err()
+}
+
+type queuedJob struct {
+	registry   *registry
+	job        Job
+	health     cell.Health
+	options    options
+	cancel     context.CancelFunc
+	done       chan struct{}
+	startedAt  time.Time
+	prev       *queuedJob
+	next       *queuedJob
+	runtimeJob bool
+}
+
+func (qj *queuedJob) Start(cell.HookContext) error {
+	qj.startedAt = time.Now()
+	qj.done = make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	qj.cancel = cancel
+	pprof.Do(ctx, qj.options.pprofLabels, func(ctx context.Context) {
+		go func() {
+			defer func() {
+				qj.registry.runtimeLifecycle.remove(qj)
+				if qj.runtimeJob {
+					qj.registry.logger.Info("Job stopped",
+						"job", qj.HookInfo(),
+						"duration", time.Since(qj.startedAt))
+				}
+				close(qj.done)
+			}()
+			if qj.runtimeJob {
+				qj.registry.logger.Info("Job started", "job", qj.HookInfo())
+			}
+			qj.job.start(ctx, qj.health, qj.options)
+		}()
+	})
+	return nil
+}
+
+func (qj *queuedJob) HookInfo() string {
+	return qj.job.info()
+}
+
+// Stop implements cell.HookInterface.
+func (qj *queuedJob) Stop(ctx cell.HookContext) error {
+	qj.cancel()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-qj.done:
+		return nil
+	}
+}
+
+var _ cell.HookDescriptiveInterface = &queuedJob{}
+
 type Group interface {
 	Add(...Job)
 	Scoped(name string) ScopedGroup
-	cell.HookInterface
 }
 
 type Job interface {
-	start(ctx context.Context, wg *sync.WaitGroup, scope cell.Scope, options options)
+	start(ctx context.Context, health cell.Health, options options)
+	info() string
 }
 
 type group struct {
-	options options
-
-	wg *sync.WaitGroup
-
-	mu         lock.Mutex
-	ctx        context.Context
-	cancel     context.CancelFunc
-	queuedJobs []Job
-
-	scope cell.Scope
+	registry *registry
+	options  options
+	health   cell.Health
 }
 
 type options struct {
 	pprofLabels pprof.LabelSet
 	logger      logrus.FieldLogger
 	shutdowner  hive.Shutdowner
-	metrics     *jobMetrics
+	metrics     Metrics
+	slog        *slog.Logger
 }
 
 type groupOpt func(o *options)
@@ -121,75 +319,19 @@ func WithPprofLabels(pprofLabels pprof.LabelSet) groupOpt {
 	}
 }
 
-var _ cell.HookInterface = (*group)(nil)
-
-// Start implements the cell.HookInterface interface
-func (jg *group) Start(_ cell.HookContext) error {
-	fmt.Println("GROUP START:", len(jg.queuedJobs))
-	jg.mu.Lock()
-	defer jg.mu.Unlock()
-
-	jg.ctx, jg.cancel = context.WithCancel(context.Background())
-
-	jg.wg.Add(len(jg.queuedJobs))
-	for _, job := range jg.queuedJobs {
-		pprof.Do(jg.ctx, jg.options.pprofLabels, func(ctx context.Context) {
-			go job.start(ctx, jg.wg, jg.scope, jg.options)
-		})
-	}
-	jg.queuedJobs = nil
-	fmt.Println("GROUP START RETURN")
-	return nil
-}
-
-// Stop implements the cell.HookInterface interface
-func (jg *group) Stop(stopCtx cell.HookContext) error {
-	jg.mu.Lock()
-	defer jg.mu.Unlock()
-
-	done := make(chan struct{})
-	go func() {
-		jg.wg.Wait()
-		close(done)
-	}()
-
-	jg.cancel()
-
-	select {
-	case <-stopCtx.Done():
-		jg.options.logger.Error("Stop hook context expired before job group was done")
-	case <-done:
-	}
-
-	return nil
-}
-
 func (jg *group) Add(jobs ...Job) {
-	jg.add(jg.scope, jobs...)
+	jg.add(jg.health, jobs...)
 }
 
-func (jg *group) add(scope cell.Scope, jobs ...Job) {
-	jg.mu.Lock()
-	defer jg.mu.Unlock()
-
-	// The context is only set once the group has been started. If we have not yet started, queue the jobs.
-	if jg.ctx == nil {
-		jg.queuedJobs = append(jg.queuedJobs, jobs...)
-		return
-	}
-
-	for _, j := range jobs {
-		jg.wg.Add(1)
-		pprof.Do(jg.ctx, jg.options.pprofLabels, func(ctx context.Context) {
-			go j.start(ctx, jg.wg, scope, jg.options)
-		})
-	}
+func (jg *group) add(health cell.Health, jobs ...Job) {
+	jg.registry.addJobs(health, jg.options, jobs...)
 }
 
+// Scoped creates a scoped group, jobs added to this scoped group will appear as a sub-scope in the health reporter
 func (jg *group) Scoped(name string) ScopedGroup {
 	return &scopedGroup{
-		group: jg,
-		scope: cell.GetSubScope(jg.scope, name),
+		group:  jg,
+		health: jg.health.NewScope(name),
 	}
 }
 
@@ -198,12 +340,12 @@ type ScopedGroup interface {
 }
 
 type scopedGroup struct {
-	group *group
-	scope cell.Scope
+	group  *group
+	health cell.Health
 }
 
 func (sg *scopedGroup) Add(jobs ...Job) {
-	sg.group.add(sg.scope, jobs...)
+	sg.group.add(sg.health, jobs...)
 }
 
 func OneShot(name string, fn OneShotFunc, opts ...jobOneShotOpt) Job {
@@ -222,7 +364,35 @@ func OneShot(name string, fn OneShotFunc, opts ...jobOneShotOpt) Job {
 
 type jobOneShotOpt func(*jobOneShot)
 
-func WithRetry(times int, backoff workqueue.RateLimiter) jobOneShotOpt {
+type RetryBackoff interface {
+	Wait() time.Duration
+}
+
+type ConstantBackoff time.Duration
+
+func (d ConstantBackoff) Wait() time.Duration {
+	return time.Duration(d)
+}
+
+type ExponentialBackoff struct {
+	Min     time.Duration
+	Max     time.Duration
+	current time.Duration
+}
+
+func (e *ExponentialBackoff) Wait() time.Duration {
+	if e.current == 0 {
+		e.current = e.Min
+	} else {
+		e.current *= 2
+		if e.current > e.Max {
+			e.current = e.Max
+		}
+	}
+	return e.current
+}
+
+func WithRetry(times int, backoff RetryBackoff) jobOneShotOpt {
 	return func(jos *jobOneShot) {
 		jos.retry = times
 		jos.backoff = backoff
@@ -248,84 +418,89 @@ type jobOneShot struct {
 	fn   OneShotFunc
 	opts []jobOneShotOpt
 
-	health cell.HealthReporter
+	health cell.Health
 
 	// If retry > 0, retry on error x times.
 	retry           int
-	backoff         workqueue.RateLimiter
+	backoff         RetryBackoff
 	shutdownOnError bool
 	metrics         bool
 }
 
-func (jos *jobOneShot) start(ctx context.Context, wg *sync.WaitGroup, scope cell.Scope, options options) {
-	defer wg.Done()
-
-	fmt.Println("ONESHOT ENTER:", jos.name)
-
+func (jos *jobOneShot) start(ctx context.Context, health cell.Health, options options) {
 	for _, opt := range jos.opts {
 		opt(jos)
 	}
 
-	jos.health = cell.GetHealthReporter(scope, "job-"+jos.name)
-	defer jos.health.Stopped("one-shot job done")
+	jos.health = health.NewScope("job-" + jos.name)
+	defer jos.health.Close()
 
-	l := options.logger.WithFields(logrus.Fields{
-		"name": jos.name,
-		"func": internal.FuncNameAndLocation(jos.fn),
-	})
+	l := options.slog.With(
+		"name", jos.name,
+		"func", internal.FuncNameAndLocation(jos.fn))
 
-	stat := &spanstat.SpanStat{}
-
-	timer, cancel := inctimer.New()
-	defer cancel()
-
-	fmt.Println("ONESHOT BEFORE TIMER")
 	var err error
-	for i := 0; i <= jos.retry; i++ {
-		var timeout time.Duration
+	var timeout time.Duration
+	for i := 0; jos.retry < 0 || i <= jos.retry; i++ {
 		if i != 0 {
-			timeout = jos.backoff.When(jos)
-			l.WithFields(logrus.Fields{
-				"backoff":     timeout,
-				"retry-count": i,
-			}).Debug("Delaying retry attempt")
-		}
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-timer.After(timeout):
-		}
-
-		l.Debug("Starting one-shot job")
-		fmt.Println("Starting one-shot job")
-
-		if jos.metrics {
-			stat.Start()
+			options.logger.Debug("Delaying retry attempt",
+				"backoff", timeout,
+				"retry-count", i,
+			)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(timeout):
+			}
 		}
 
 		jos.health.OK("Running")
+		start := time.Now()
 		err = jos.fn(ctx, jos.health)
 
-		if jos.metrics {
-			sec := stat.End(true).Seconds()
-			options.metrics.OneShotRunDuration.WithLabelValues(jos.name).Observe(sec)
-			stat.Reset()
+		duration := time.Since(start)
+		if options.metrics != nil {
+			options.metrics.OneShotRunDuration(jos.name, duration)
 		}
 
-		if err == nil {
+		switch {
+		case err == nil:
+			jos.health.OK("Finished (" + duration.String() + ")")
 			return
-		} else if !errors.Is(err, context.Canceled) {
-			jos.health.Degraded("one-shot job errored", err)
-			l.WithError(err).Error("one-shot job errored")
-			options.metrics.JobErrorsTotal.WithLabelValues(jos.name).Inc()
+		case errors.Is(err, context.Canceled) || ctx.Err() != nil:
+			return
+		default:
+			if jos.backoff != nil && (jos.retry < 0 || i < jos.retry) {
+				timeout = jos.backoff.Wait()
+			}
+			retriesRemain := strconv.FormatInt(int64(jos.retry-i), 10)
+			if jos.retry < 0 {
+				retriesRemain = "<inf>"
+			} else if jos.retry == 0 {
+				retriesRemain = "<none>"
+			}
+			msg := fmt.Sprintf("Failed (duration %s, retry %d/%s in %s)", duration, i+1, retriesRemain, timeout)
+			jos.health.Degraded(msg, err)
+			l.Error("Failed",
+				"error", err,
+				"retry", i+1,
+				"remaining", retriesRemain,
+				"timeout", timeout,
+				"duration", duration,
+			)
+			if options.metrics != nil {
+				options.metrics.JobError(jos.name, err)
+			}
 		}
 	}
 
-	fmt.Println("ONESHOT CALLING FN")
 	if options.shutdowner != nil && jos.shutdownOnError {
 		options.shutdowner.Shutdown(hive.ShutdownWithError(err))
 	}
+}
+
+func (jos *jobOneShot) info() string {
+	return fmt.Sprintf("%s (%s)", jos.name, internal.FuncNameAndLocation(jos.fn))
 }
 
 func Timer(name string, fn TimerFunc, interval time.Duration, opts ...timerOpt) Job {
@@ -348,13 +523,11 @@ type TimerFunc func(ctx context.Context) error
 
 type timerOpt func(*jobTimer)
 
-// Trigger which can be used to trigger a timer job, trigger events are coalesced.
 type Trigger interface {
 	_trigger()
 	Trigger()
 }
 
-// NewTrigger creates a new trigger, which can be used to trigger a timer job.
 func NewTrigger() *trigger {
 	return &trigger{
 		c: make(chan struct{}, 1),
@@ -362,7 +535,13 @@ func NewTrigger() *trigger {
 }
 
 type trigger struct {
-	c chan struct{}
+	debounce time.Duration
+
+	mu            sync.Mutex
+	c             chan struct{}
+	lastTriggered time.Time
+	folds         int
+	waitStart     time.Time
 }
 
 func (t *trigger) _trigger() {}
@@ -380,74 +559,96 @@ func WithTrigger(trig Trigger) timerOpt {
 	}
 }
 
+func (t *trigger) markTriggered(name string, metrics Metrics) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.lastTriggered = time.Now()
+	if metrics != nil {
+		metrics.TimerTriggerStats(name, t.lastTriggered.Sub(t.waitStart), t.folds)
+	}
+	t.folds = 0
+
+	select {
+	case <-t.c:
+	default:
+	}
+}
+
 type jobTimer struct {
 	name string
 	fn   TimerFunc
 	opts []timerOpt
 
-	health cell.HealthReporter
+	health cell.Health
 
 	interval time.Duration
 	trigger  *trigger
 
-	// If not nil, call the shutdowner on error
 	shutdown hive.Shutdowner
 }
 
-func (jt *jobTimer) start(ctx context.Context, wg *sync.WaitGroup, scope cell.Scope, options options) {
-	defer wg.Done()
-
+func (jt *jobTimer) start(ctx context.Context, health cell.Health, options options) {
 	for _, opt := range jt.opts {
 		opt(jt)
 	}
 
-	jt.health = cell.GetHealthReporter(scope, "timer-job-"+jt.name)
+	jt.health = health.NewScope("timer-job-" + jt.name)
+	defer jt.health.Close()
 
-	l := options.logger.WithFields(logrus.Fields{
-		"name": jt.name,
-		"func": internal.FuncNameAndLocation(jt.fn),
-	})
+	l := options.slog.With(
+		"name", jt.name,
+		"func", internal.FuncNameAndLocation(jt.fn))
 
-	timer := time.NewTicker(jt.interval)
-	defer timer.Stop()
+	var tickerChan <-chan time.Time
+	if jt.interval > 0 {
+		ticker := time.NewTicker(jt.interval)
+		defer ticker.Stop()
+		tickerChan = ticker.C
+	}
 
 	var triggerChan chan struct{}
 	if jt.trigger != nil {
 		triggerChan = jt.trigger.c
 	}
 
-	l.Debug("Starting timer job")
 	jt.health.OK("Primed")
-
-	stat := &spanstat.SpanStat{}
 
 	for {
 		select {
 		case <-ctx.Done():
-			jt.health.Stopped("timer job context done")
 			return
-		case <-timer.C:
+		case <-tickerChan:
 		case <-triggerChan:
 		}
 
 		l.Debug("Timer job triggered")
 
-		stat.Start()
+		if jt.trigger != nil {
+			jt.trigger.markTriggered(jt.name, options.metrics)
+		}
 
+		start := time.Now()
 		err := jt.fn(ctx)
+		duration := time.Since(start)
 
-		total := stat.End(true).Total()
-		options.metrics.TimerRunDuration.WithLabelValues(jt.name).Observe(total.Seconds())
-		stat.Reset()
+		if options.metrics != nil {
+			options.metrics.TimerRunDuration(jt.name, duration)
+		}
 
 		if err == nil {
-			jt.health.OK("OK (" + total.String() + ")")
+			jt.health.OK("OK (" + duration.String() + ")")
 			l.Debug("Timer job finished")
 		} else if !errors.Is(err, context.Canceled) {
-			jt.health.Degraded("timer job errored", err)
-			l.WithError(err).Error("Timer job errored")
+			msg := fmt.Sprintf("Timer job failed (duration %s)", duration)
+			jt.health.Degraded(msg, err)
+			l.Error("Timer job failed",
+				"error", err,
+				"duration", duration)
 
-			options.metrics.JobErrorsTotal.WithLabelValues(jt.name).Inc()
+			if options.metrics != nil {
+				options.metrics.JobError(jt.name, err)
+			}
 			if jt.shutdown != nil {
 				jt.shutdown.Shutdown(hive.ShutdownWithError(err))
 			}
@@ -457,6 +658,10 @@ func (jt *jobTimer) start(ctx context.Context, wg *sync.WaitGroup, scope cell.Sc
 			return
 		}
 	}
+}
+
+func (jt *jobTimer) info() string {
+	return fmt.Sprintf("%s (%s)", jt.name, internal.FuncNameAndLocation(jt.fn))
 }
 
 func Observer[T any](name string, fn ObserverFunc[T], observable stream.Observable[T], opts ...observerOpt[T]) Job {
@@ -483,57 +688,63 @@ type jobObserver[T any] struct {
 	fn   ObserverFunc[T]
 	opts []observerOpt[T]
 
-	health cell.HealthReporter
+	health cell.Health
 
 	observable stream.Observable[T]
 
 	// If not nil, call the shutdowner on error
-	shutdown hive.Shutdowner
+	shutdown        hive.Shutdowner
+	shutdownOnError bool
 }
 
-func (jo *jobObserver[T]) start(ctx context.Context, wg *sync.WaitGroup, scope cell.Scope, options options) {
-	defer wg.Done()
-
+func (jo *jobObserver[T]) start(ctx context.Context, health cell.Health, options options) {
 	for _, opt := range jo.opts {
 		opt(jo)
 	}
 
-	jo.health = cell.GetHealthReporter(scope, "observer-job-"+jo.name)
+	if jo.shutdownOnError && options.shutdowner != nil {
+		jo.shutdown = options.shutdowner
+	}
+
+	jo.health = health.NewScope("observer-job-" + jo.name)
+	defer jo.health.Close()
 	reportTicker := time.NewTicker(10 * time.Second)
 	defer reportTicker.Stop()
 
-	l := options.logger.WithFields(logrus.Fields{
-		"name": jo.name,
-		"func": internal.FuncNameAndLocation(jo.fn),
-	})
+	l := options.slog.With(
+		"name", jo.name,
+		"func", internal.FuncNameAndLocation(jo.fn))
 
-	l.Debug("Observer job started")
 	jo.health.OK("Primed")
 	var msgCount uint64
 
 	done := make(chan struct{})
 
-	var (
-		stat = &spanstat.SpanStat{}
-		err  error
-	)
+	var err error
 	jo.observable.Observe(ctx, func(t T) {
-		stat.Start()
-
+		start := time.Now()
 		err := jo.fn(ctx, t)
+		duration := time.Since(start)
 
-		total := stat.End(true).Total()
-		options.metrics.ObserverRunDuration.WithLabelValues(jo.name).Observe(total.Seconds())
-		stat.Reset()
+		if options.metrics != nil {
+			options.metrics.ObserverRunDuration(jo.name, duration)
+		}
 
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return
 			}
 
-			jo.health.Degraded("observer job errored", err)
-			l.WithError(err).Error("Observer job errored")
-			options.metrics.JobErrorsTotal.WithLabelValues(jo.name).Inc()
+			msg := fmt.Sprintf("Observer job failed (duration %s)", duration)
+			jo.health.Degraded(msg, err)
+			l.Error("Observer job errored",
+				"error", err,
+				"duration", duration,
+			)
+
+			if options.metrics != nil {
+				options.metrics.JobError(jo.name, err)
+			}
 			if jo.shutdown != nil {
 				jo.shutdown.Shutdown(hive.ShutdownWithError(
 					err,
@@ -544,10 +755,9 @@ func (jo *jobObserver[T]) start(ctx context.Context, wg *sync.WaitGroup, scope c
 
 		msgCount++
 
-		// Don't report health for every event, only when we have not done so for a bit
 		select {
 		case <-reportTicker.C:
-			jo.health.OK("OK (" + total.String() + ") [" + strconv.FormatUint(msgCount, 10) + "]")
+			jo.health.OK("OK (" + duration.String() + ") [" + strconv.FormatUint(msgCount, 10) + "]")
 		default:
 		}
 	}, func(e error) {
@@ -557,10 +767,11 @@ func (jo *jobObserver[T]) start(ctx context.Context, wg *sync.WaitGroup, scope c
 
 	<-done
 
-	jo.health.Stopped("observer job done")
-	if err != nil {
-		l.WithError(err).Error("Observer job stopped with an error")
-	} else {
-		l.WithError(err).Debug("Observer job stopped")
+	if err != nil && !errors.Is(err, context.Canceled) {
+		l.Error("Observer job stopped with an error", "error", err)
 	}
+}
+
+func (jo *jobObserver[T]) info() string {
+	return fmt.Sprintf("%s (%s)", jo.name, internal.FuncNameAndLocation(jo.fn))
 }

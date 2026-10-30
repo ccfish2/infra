@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"runtime/pprof"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +18,14 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+type controllerRateLimiter struct {
+	workqueue.RateLimiter
+}
+
+func (b controllerRateLimiter) Wait() time.Duration {
+	return b.When("")
+}
+
 var (
 	tick    = 10 * time.Millisecond
 	timeout = 5 * time.Second
@@ -28,10 +37,13 @@ func TestMain(m *testing.M) {
 		// missing Event.Done() calls.
 		runtime.GC()
 	}
-	goleak.VerifyTestMain(m, goleak.Cleanup(cleanup))
+	goleak.VerifyTestMain(m,
+		goleak.IgnoreTopFunction("gopkg.in/natefinch/lumberjack%2ev2.(*Logger).millRun"),
+		goleak.Cleanup(cleanup),
+	)
 }
 
-func fixture(fn func(Registry, cell.Scope, cell.Lifecycle)) *hive.Hive {
+func fixture(fn func(Registry, cell.Health, cell.Lifecycle)) *hive.Hive {
 	logging.SetLogLevel(logrus.DebugLevel)
 	return hive.New(
 		Cell,
@@ -43,8 +55,8 @@ func fixture(fn func(Registry, cell.Scope, cell.Lifecycle)) *hive.Hive {
 func TestOneShot_ShortRun(t *testing.T) {
 	stop := make(chan struct{})
 
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 
 		g.Add(
 			OneShot("short", func(ctx context.Context, health cell.HealthReporter) error {
@@ -53,7 +65,6 @@ func TestOneShot_ShortRun(t *testing.T) {
 			}),
 		)
 
-		l.Append(g)
 	})
 
 	if assert.NoError(t, h.Start(context.Background())) {
@@ -65,8 +76,8 @@ func TestOneShot_ShortRun(t *testing.T) {
 func TestOneShot_LongRun(t *testing.T) {
 	started, stopped := make(chan struct{}), make(chan struct{})
 
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 
 		g.Add(OneShot("long", func(ctx context.Context, health cell.HealthReporter) error {
 			close(started)
@@ -74,7 +85,6 @@ func TestOneShot_LongRun(t *testing.T) {
 			defer close(stopped)
 			return nil
 		}))
-		l.Append(g)
 	})
 	if assert.NoError(t, h.Start(context.Background())) {
 		<-started
@@ -89,20 +99,22 @@ func TestOneShot_FailRetry(t *testing.T) {
 		i int
 	)
 	retries := 3
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g = r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g = r.NewGroup(h)
 		g.Add(OneShot("retries", func(ctx context.Context, health cell.HealthReporter) error {
 			defer func() { i += 1 }()
 			return errors.New("failed and retry")
-		}, WithRetry(retries, workqueue.DefaultControllerRateLimiter())))
+		}, WithRetry(retries, controllerRateLimiter{workqueue.DefaultControllerRateLimiter()})))
 
-		l.Append(g)
 	})
 	if err := h.Start(context.Background()); err != nil {
 		t.Fatal("failed to start", err)
 	}
 
-	g.(*group).wg.Wait()
+	deadline := time.Now().Add(timeout)
+	for i < retries+1 && time.Now().Before(deadline) {
+		time.Sleep(tick)
+	}
 
 	if err := h.Stop(context.Background()); err != nil {
 		t.Fatal("failed to stop")
@@ -137,20 +149,23 @@ func testOneShotFailBackOff() (bool, error) {
 	)
 	const retries = 6
 	failed := false
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g = r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g = r.NewGroup(h)
 		g.Add(OneShot("always back off", func(ctx context.Context, health cell.HealthReporter) error {
 			defer func() {
 				i++
 			}()
 			times = append(times, time.Now())
 			return errors.New("always fail")
-		}, WithRetry(retries, workqueue.NewItemExponentialFailureRateLimiter(50*time.Millisecond, 10*time.Second))))
+		}, WithRetry(retries, controllerRateLimiter{workqueue.NewItemExponentialFailureRateLimiter(50*time.Millisecond, 10*time.Second)})))
 	})
 	if err := h.Start(context.Background()); err != nil {
 		return true, err
 	}
-	g.(*group).wg.Wait()
+	deadline := time.Now().Add(timeout)
+	for i < retries+1 && time.Now().Before(deadline) {
+		time.Sleep(tick)
+	}
 	if err := h.Stop(context.Background()); err != nil {
 		return true, err
 	}
@@ -174,8 +189,8 @@ func TestOneShot_AfterRecover(t *testing.T) {
 		i int
 	)
 
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g = r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g = r.NewGroup(h)
 
 		g.Add(OneShot("retry after recover", func(ctx context.Context, health cell.HealthReporter) error {
 			defer func() {
@@ -185,15 +200,14 @@ func TestOneShot_AfterRecover(t *testing.T) {
 				return errors.New("sometimes error")
 			}
 			return nil
-		}, WithRetry(3, workqueue.DefaultControllerRateLimiter())))
-		l.Append(g)
+		}, WithRetry(3, controllerRateLimiter{workqueue.DefaultControllerRateLimiter()})))
 	})
 
 	if err := h.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
-	g.(*group).wg.Wait()
+	assert.Eventually(t, func() bool { return i == 2 }, timeout, tick)
 
 	if err := h.Stop(context.Background()); err != nil {
 		t.Fatal(err)
@@ -205,12 +219,11 @@ func TestOneShot_AfterRecover(t *testing.T) {
 
 func TestOneShot_ShutDown(t *testing.T) {
 	targetErr := errors.New("target error")
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 		g.Add(OneShot("shutdown", func(ctx context.Context, health cell.HealthReporter) error {
 			return targetErr
 		}, WithShutdown()))
-		l.Append(g)
 	})
 
 	err := h.Run()
@@ -226,16 +239,15 @@ func TestOneShot_RetryFailShutdown(t *testing.T) {
 	targetErr := errors.New("Always error")
 	// expect would be "Always error"
 	// build the hive using the fixture
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 
 		g.Add(OneShot(
 			"retry-fail-shutdown", func(ctx context.Context, health cell.HealthReporter) error {
 				defer func() { i++ }()
 				return targetErr
-			}, WithRetry(retrytimes, workqueue.DefaultControllerRateLimiter()), WithShutdown(),
+			}, WithRetry(retrytimes, controllerRateLimiter{workqueue.DefaultControllerRateLimiter()}), WithShutdown(),
 		))
-		l.Append(g)
 	})
 	// add "retry-fail-shutdown" group into
 	// add the group intot he lifecycle
@@ -259,8 +271,8 @@ func TestOneShot_RetryRecoverNoShutdown(t *testing.T) {
 	)
 
 	started := make(chan interface{})
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g = r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g = r.NewGroup(h)
 		g.Add(OneShot("retry recover no shutdown", func(ctx context.Context, health cell.HealthReporter) error {
 
 			if i == 0 {
@@ -271,8 +283,7 @@ func TestOneShot_RetryRecoverNoShutdown(t *testing.T) {
 			<-ctx.Done()
 
 			return ctx.Err()
-		}, WithRetry(3, workqueue.DefaultControllerRateLimiter())))
-		l.Append(g)
+		}, WithRetry(3, controllerRateLimiter{workqueue.DefaultControllerRateLimiter()})))
 	})
 
 	shutdown := make(chan struct{})
@@ -299,8 +310,8 @@ func TestTimer_OnInterval(t *testing.T) {
 	stop := make(chan struct{})
 	i := 0
 
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 		g.Add(
 			Timer("on-interval", func(ctx context.Context) error {
 				i++
@@ -309,7 +320,6 @@ func TestTimer_OnInterval(t *testing.T) {
 				}
 				return nil
 			}, 100*time.Millisecond))
-		l.Append(g)
 	})
 
 	if err := h.Start(context.Background()); err != nil {
@@ -331,8 +341,8 @@ func TestTimer_Trigger(t *testing.T) {
 
 	trigger := NewTrigger()
 
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 
 		g.Add(
 			Timer("on-interval", func(ctx context.Context) error {
@@ -344,7 +354,6 @@ func TestTimer_Trigger(t *testing.T) {
 			}, 1*time.Hour, WithTrigger(trigger)),
 		)
 
-		l.Append(g)
 	})
 
 	if err := h.Start(context.Background()); err != nil {
@@ -376,8 +385,8 @@ func TestTimer_DoubleTrigger(t *testing.T) {
 
 	trigger := NewTrigger()
 
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 
 		g.Add(
 			Timer("one-interval", func(ctx context.Context) error {
@@ -394,7 +403,6 @@ func TestTimer_DoubleTrigger(t *testing.T) {
 			}, 1*time.Hour, WithTrigger(trigger)),
 		)
 
-		l.Append(g)
 	})
 
 	trigger.Trigger()
@@ -424,8 +432,8 @@ func TestTimer_DoubleTrigger(t *testing.T) {
 
 func TestTimer_ExitOnClose(t *testing.T) {
 	var i int
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 
 		g.Add(
 			Timer("one-interval", func(ctx context.Context) error {
@@ -433,7 +441,6 @@ func TestTimer_ExitOnClose(t *testing.T) {
 				return nil
 			}, 1*time.Hour),
 		)
-		l.Append(g)
 	})
 
 	if err := h.Start(context.Background()); err != nil {
@@ -452,8 +459,8 @@ func TestTimer_ExitOnClose(t *testing.T) {
 func TestTimer_ExitOnCloseFnCtx(t *testing.T) {
 	var i int
 	started := make(chan struct{})
-	h := fixture(func(r Registry, s cell.Scope, l cell.Lifecycle) {
-		g := r.NewGroup(s)
+	h := fixture(func(r Registry, h cell.Health, l cell.Lifecycle) {
+		g := r.NewGroup(h)
 
 		var closer sync.Once
 
@@ -467,7 +474,6 @@ func TestTimer_ExitOnCloseFnCtx(t *testing.T) {
 			}, 1*time.Millisecond),
 		)
 
-		l.Append(g)
 	})
 
 	if err := h.Start(context.Background()); err != nil {
@@ -482,5 +488,72 @@ func TestTimer_ExitOnCloseFnCtx(t *testing.T) {
 
 	if i != 1 {
 		t.Fail()
+	}
+}
+
+func TestControllerManagerJobCompatibility(t *testing.T) {
+	started := make(chan struct{})
+	stopped := make(chan struct{})
+
+	h := fixture(func(r Registry, health cell.Health, lifecycle cell.Lifecycle) {
+		group := r.NewGroup(
+			health,
+			WithLogger(logrus.New()),
+			WithPprofLabels(pprof.Labels("cells", "controller-runtime")),
+		)
+		group.Add(OneShot("manager", func(ctx context.Context, health cell.HealthReporter) error {
+			close(started)
+			<-ctx.Done()
+			close(stopped)
+			return ctx.Err()
+		}))
+		// This mirrors controller-runtime: the controller appends its group
+		// itself instead of relying on the jobs registry to own it.
+	})
+
+	assert.NoError(t, h.Start(context.Background()))
+	select {
+	case <-started:
+	case <-time.After(timeout):
+		t.Fatal("controller manager job did not start")
+	}
+	assert.NoError(t, h.Stop(context.Background()))
+	select {
+	case <-stopped:
+	case <-time.After(timeout):
+		t.Fatal("controller manager job did not receive cancellation")
+	}
+}
+
+func TestRuntimeJobAddedAfterHiveStart(t *testing.T) {
+	started := make(chan struct{})
+	stopped := make(chan struct{})
+	var registry Registry
+	var health cell.Health
+
+	h := fixture(func(r Registry, h cell.Health, lifecycle cell.Lifecycle) {
+		registry = r
+		health = h
+	})
+
+	assert.NoError(t, h.Start(context.Background()))
+	group := registry.NewGroup(health)
+	group.Add(OneShot("runtime-manager", func(ctx context.Context, health cell.HealthReporter) error {
+		close(started)
+		<-ctx.Done()
+		close(stopped)
+		return ctx.Err()
+	}))
+
+	select {
+	case <-started:
+	case <-time.After(timeout):
+		t.Fatal("runtime manager job did not start")
+	}
+	assert.NoError(t, h.Stop(context.Background()))
+	select {
+	case <-stopped:
+	case <-time.After(timeout):
+		t.Fatal("runtime manager job did not stop")
 	}
 }
