@@ -12,7 +12,7 @@ var (
 
 type Cell interface {
 	Info(container) Info
-	Apply(container) error
+	Apply(container, rootContainer) error
 }
 
 type In = dig.In
@@ -25,3 +25,5 @@ type container interface {
 	Decorate(fn any, opts ...dig.DecorateOption) error
 	Scope(name string, opts ...dig.ScopeOption) *dig.Scope
 }
+
+type rootContainer = container

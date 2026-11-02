@@ -2,6 +2,7 @@ package hivetest
 
 import (
 	"context"
+	"io"
 	"testing"
 
 	"github.com/ccfish2/infra/pkg/hive/cell"
@@ -14,7 +15,7 @@ type lifecycle struct {
 }
 
 // PrintHooks implements cell.Lifecycle.
-func (lc *lifecycle) PrintHooks() {
+func (lc *lifecycle) PrintHooks(io.Writer) {
 	panic("unimplemented")
 }
 

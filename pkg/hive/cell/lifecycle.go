@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"sync"
@@ -29,7 +30,7 @@ type Lifecycle interface {
 
 	Start(context.Context) error
 	Stop(context.Context) error
-	PrintHooks()
+	PrintHooks(io.Writer)
 }
 
 type augmentedHook struct {
@@ -41,6 +42,8 @@ type DefaultLifecycle struct {
 	mu         sync.Mutex
 	hooks      []augmentedHook
 	numStarted int
+
+	LogThreshold time.Duration
 }
 
 func (lc *DefaultLifecycle) Append(hook HookInterface) {
@@ -112,11 +115,15 @@ func (lc *DefaultLifecycle) Stop(ctx context.Context) error {
 	return errs
 }
 
-func (lc *DefaultLifecycle) PrintHooks() {
+type PreStopHook interface {
+	PreStopHookMarker()
+}
+
+func (lc *DefaultLifecycle) PrintHooks(w io.Writer) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	fmt.Printf("Start hooks:\n\n")
+	fmt.Fprintf(w, "Start hooks:\n\n")
 	for _, hook := range lc.hooks {
 		fnName, exists := getHookFuncName(hook.HookInterface, true)
 		if !exists {
@@ -125,14 +132,25 @@ func (lc *DefaultLifecycle) PrintHooks() {
 		fmt.Printf("  • %s (%s)\n", fnName, hook.moduleID)
 	}
 
-	fmt.Printf("\nStop hooks:\n\n")
-	for i := len(lc.hooks) - 1; i >= 0; i-- {
-		hook := lc.hooks[i]
+	fmt.Fprintf(w, "\nStop hooks:\n\n")
+	printHook := func(hook augmentedHook) {
 		fnName, exists := getHookFuncName(hook.HookInterface, false)
 		if !exists {
-			continue
+			return
 		}
-		fmt.Printf("  • %s (%s)\n", fnName, hook.moduleID)
+		fmt.Fprintf(w, "  • %s (%s)\n", fnName, hook.moduleID)
+	}
+	for i := len(lc.hooks) - 1; i >= 0; i-- {
+		hook := lc.hooks[i]
+		if _, ok := hook.HookInterface.(PreStopHook); ok {
+			printHook(hook)
+		}
+	}
+	for i := len(lc.hooks) - 1; i >= 0; i-- {
+		hook := lc.hooks[i]
+		if _, ok := hook.HookInterface.(PreStopHook); !ok {
+			printHook(hook)
+		}
 	}
 }
 

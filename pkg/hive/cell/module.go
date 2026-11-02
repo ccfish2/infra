@@ -72,7 +72,7 @@ func createStructedScope(id FullModuleID, p Health, lc Lifecycle) Scope {
 }
 
 // Apply implements Cell.
-func (m *module) Apply(c container) error {
+func (m *module) Apply(c container, root rootContainer) error {
 	scope := c.Scope(m.id)
 
 	if err := scope.Provide(m.moduleID); err != nil {
@@ -95,7 +95,7 @@ func (m *module) Apply(c container) error {
 	}
 
 	for _, cell := range m.cells {
-		if err := cell.Apply(scope); err != nil {
+		if err := cell.Apply(scope, root); err != nil {
 			return err
 		}
 	}
@@ -134,3 +134,11 @@ func (m *module) lifecycle(lc Lifecycle, fullID FullModuleID) Lifecycle {
 
 type ModuleID string
 type FullModuleID []string
+
+type ModuleDecorator any
+
+type ModuleDecorators []ModuleDecorator
+
+type ModulePrivateProvider any
+
+type ModulePrivateProviders []ModulePrivateProvider

@@ -39,7 +39,7 @@ func (inv *invoker) invoke(cont container) error {
 	return nil
 }
 
-func (i *invoker) Apply(c container) error {
+func (i *invoker) Apply(c container, rootContainer rootContainer) error {
 
 	invoker := func() error { return i.invoke(c) }
 

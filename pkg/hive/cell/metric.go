@@ -83,7 +83,7 @@ func (m *metric[S]) provideMetrics(metricSet S) metricOut {
 }
 
 // Apply implements Cell.
-func (m *metric[S]) Apply(container container) error {
+func (m *metric[S]) Apply(container container, rootContainer rootContainer) error {
 	container.Provide(m.ctor, dig.Export(true))
 	container.Provide(m.provideMetrics, dig.Export(true))
 	return nil

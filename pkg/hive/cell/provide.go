@@ -19,7 +19,7 @@ func Provide(ctors ...any) Cell {
 	return &provider{ctors: ctors, export: true}
 }
 
-func (p *provider) Apply(c container) error {
+func (p *provider) Apply(c container, rootContainer rootContainer) error {
 	p.infos = make([]dig.ProvideInfo, len(p.ctors))
 	for i, ctor := range p.ctors {
 		if err := c.Provide(ctor, dig.Export(p.export), dig.FillProvideInfo(&p.infos[i])); err != nil {

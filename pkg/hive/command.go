@@ -14,7 +14,8 @@ func (h *Hive) Command() *cobra.Command {
 		Short: "Inspect the hive",
 		Run: func(cmd *cobra.Command, args []string) {
 			logging.SetLogLevel(logrus.WarnLevel)
-			h.PrintObjects()
+			log, _ := parseRunArgs(nil)
+			_ = h.PrintObjects(cmd.OutOrStdout(), log)
 		},
 		TraverseChildren: false,
 	}

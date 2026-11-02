@@ -14,9 +14,9 @@ func (g group) Info(c container) Info {
 	return nd
 }
 
-func (g group) Apply(c container) error {
+func (g group) Apply(c container, root rootContainer) error {
 	for _, cell := range g {
-		if err := cell.Apply(c); err != nil {
+		if err := cell.Apply(c, root); err != nil {
 			return err
 		}
 	}

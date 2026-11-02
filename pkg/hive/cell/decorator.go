@@ -12,14 +12,14 @@ type decorator struct {
 }
 
 // Apply implements Cell.
-func (d *decorator) Apply(c container) error {
+func (d *decorator) Apply(c container, root rootContainer) error {
 	scope := c.Scope(fmt.Sprintf("(decorate %s)", internal.PrettyType(d.decorator)))
 	if err := scope.Decorate(d.decorator); err != nil {
 		return err
 	}
 
 	for _, cell := range d.cells {
-		if err := cell.Apply(scope); err != nil {
+		if err := cell.Apply(scope, root); err != nil {
 			return err
 		}
 	}

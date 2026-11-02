@@ -7,7 +7,6 @@ import (
 
 	"github.com/ccfish2/infra/pkg/hive/cell"
 	"github.com/ccfish2/infra/pkg/hive/job"
-	"github.com/ccfish2/infra/pkg/stream"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/rand"
 	"k8s.io/client-go/util/workqueue"
@@ -22,10 +21,10 @@ type exampleJobCell struct {
 	logger   logrus.FieldLogger
 }
 
-func newExampleCell(lc cell.Lifecycle, logger logrus.FieldLogger, registry job.Registry, scope cell.Scope) *exampleJobCell {
+func newExampleCell(lc cell.Lifecycle, logger logrus.FieldLogger, registry job.Registry, health cell.Health) *exampleJobCell {
 	ex := exampleJobCell{
 		jobGroup: registry.NewGroup(
-			scope,
+			health,
 			job.WithLogger(logger),
 			job.WithPprofLabels(pprof.LabelSet{}),
 		),
@@ -33,13 +32,6 @@ func newExampleCell(lc cell.Lifecycle, logger logrus.FieldLogger, registry job.R
 		trigger:  job.NewTrigger(),
 		logger:   logger,
 	}
-	ex.jobGroup.Add(
-		job.OneShot("sync-on-all", ex.sync, job.WithRetry(3, workqueue.DefaultControllerRateLimiter()), job.WithShutdown()),
-		job.OneShot("daemon", ex.daemon),
-		job.Timer("timer", ex.timer, 5*time.Second, job.WithTrigger(ex.trigger)),
-		job.Observer("observer", ex.Observe, stream.FromChannel(ex.workChan)),
-	)
-	lc.Append(ex.jobGroup)
 	return &ex
 }
 
@@ -80,4 +72,12 @@ func (ex *exampleJobCell) Trigger() {
 func (ex *exampleJobCell) Observe(ctx context.Context, event struct{}) error {
 	ex.logger.Info("observed event")
 	return nil
+}
+
+type controllerRateLimiter struct {
+	workqueue.RateLimiter
+}
+
+func (l controllerRateLimiter) Wait() time.Duration {
+	return l.RateLimiter.When(struct{}{})
 }
