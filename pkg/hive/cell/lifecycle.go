@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"time"
 
 	"sync"
@@ -28,16 +29,19 @@ type HookDescriptiveInterface interface {
 type Lifecycle interface {
 	Append(HookInterface)
 
-	Start(context.Context) error
-	Stop(context.Context) error
+	Start(*slog.Logger, context.Context) error
+	Stop(*slog.Logger, context.Context) error
 	PrintHooks(io.Writer)
 }
 
 type augmentedHook struct {
 	HookInterface
 	moduleID FullModuleID
+	stopped  bool
 }
 
+// a default lifecycle management that conforms to lifecycle
+// it is exported for use in applications that have nested lifecycle
 type DefaultLifecycle struct {
 	mu         sync.Mutex
 	hooks      []augmentedHook
@@ -46,14 +50,27 @@ type DefaultLifecycle struct {
 	LogThreshold time.Duration
 }
 
+func NewDefaultLifecycle(hooks []HookInterface, numStarted int, logThreshold time.Duration) *DefaultLifecycle {
+	h := make([]augmentedHook, 0, len(hooks))
+	for _, hook := range hooks {
+		h = append(h, augmentedHook{hook, nil, false})
+	}
+	return &DefaultLifecycle{
+		mu:           sync.Mutex{},
+		hooks:        h,
+		numStarted:   numStarted,
+		LogThreshold: logThreshold,
+	}
+}
+
 func (lc *DefaultLifecycle) Append(hook HookInterface) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 	fmt.Printf("added hook %v \n", internal.FuncNameAndLocation(hook.Start))
-	lc.hooks = append(lc.hooks, augmentedHook{hook, nil})
+	lc.hooks = append(lc.hooks, augmentedHook{hook, nil, false})
 }
 
-func (lc *DefaultLifecycle) Start(ctx context.Context) error {
+func (lc *DefaultLifecycle) Start(log *slog.Logger, ctx context.Context) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
@@ -83,7 +100,7 @@ func (lc *DefaultLifecycle) Start(ctx context.Context) error {
 	return nil
 }
 
-func (lc *DefaultLifecycle) Stop(ctx context.Context) error {
+func (lc *DefaultLifecycle) Stop(log *slog.Logger, ctx context.Context) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 

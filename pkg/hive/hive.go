@@ -347,14 +347,14 @@ func (h *Hive) Start(args ...any) error {
 
 	log.Info("Starting")
 
-	return h.lifecycle.Start(ctx)
+	return h.lifecycle.Start(log, ctx)
 }
 
 func (h *Hive) Stop(args ...any) error {
 	log, ctx := parseLifecycleArgs(args)
 	defer close(h.fatalOnTimeout(ctx))
 	log.Info("Stopping")
-	return h.lifecycle.Stop(ctx)
+	return h.lifecycle.Stop(log, ctx)
 }
 
 func parseLifecycleArgs(args []any) (*slog.Logger, context.Context) {

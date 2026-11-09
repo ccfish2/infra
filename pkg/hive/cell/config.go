@@ -1,6 +1,7 @@
 package cell
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -13,6 +14,8 @@ import (
 	"github.com/ccfish2/infra/pkg/cidr"
 	"github.com/ccfish2/infra/pkg/utils"
 )
+
+var ErrDuplicateFlag = errors.New("duplicate flag")
 
 type DecodeHooks []mapstructure.DecodeHookFunc
 
@@ -103,11 +106,21 @@ func (c *config[Cfg]) provideConfig(p configParams[Cfg]) (Cfg, error) {
 
 // Apply implements Cell.
 func (c *config[Cfg]) Apply(cont container, rootContainer rootContainer) error {
-	// register the flags
-	err := cont.Invoke(
-		func(allFlags *pflag.FlagSet) {
-			allFlags.AddFlagSet(c.flags)
+	err := cont.Invoke(func(allFlags *pflag.FlagSet) error {
+		var errs []error
+		c.flags.VisitAll(func(f *pflag.Flag) {
+			if allFlags.Lookup(f.Name) != nil {
+				errs = append(errs, fmt.Errorf("%w: %q", ErrDuplicateFlag, f.Name))
+				return
+			}
+			if f.Shorthand != "" && allFlags.ShorthandLookup(f.Shorthand) != nil {
+				errs = append(errs, fmt.Errorf("%w: shorthand %q (flag %q)", ErrDuplicateFlag, f.Shorthand, f.Name))
+				return
+			}
+			allFlags.AddFlag(f)
 		})
+		return errors.Join(errs...)
+	})
 	if err != nil {
 		return err
 	}

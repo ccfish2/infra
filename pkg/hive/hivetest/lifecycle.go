@@ -3,6 +3,7 @@ package hivetest
 import (
 	"context"
 	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/ccfish2/infra/pkg/hive/cell"
@@ -20,12 +21,12 @@ func (lc *lifecycle) PrintHooks(io.Writer) {
 }
 
 // Start implements cell.Lifecycle.
-func (lc *lifecycle) Start(context.Context) error {
+func (lc *lifecycle) Start(log *slog.Logger, _ context.Context) error {
 	panic("unimplemented")
 }
 
 // Stop implements cell.Lifecycle.
-func (lc *lifecycle) Stop(context.Context) error {
+func (lc *lifecycle) Stop(log *slog.Logger, _ context.Context) error {
 	panic("unimplemented")
 }
 

@@ -42,3 +42,21 @@ func Decorate(dtor any, cells ...Cell) Cell {
 		cells:     cells,
 	}
 }
+
+// DecorateAll takes a decorate function and apply it globally
+func DecorateAll(dtor any) Cell {
+	return &allDecorator{dtor}
+}
+
+type allDecorator struct {
+	decorator any
+}
+
+func (d *allDecorator) Apply(_ container, rc rootContainer) error {
+	return rc.Decorate(d.decorator)
+}
+
+func (d *allDecorator) Info(_ container) Info {
+	n := NewInfoNode(fmt.Sprintf("🔀* %s: %s", internal.FuncNameAndLocation(d.decorator), internal.PrettyType(d.decorator)))
+	return n
+}
