@@ -1,6 +1,7 @@
 package cell
 
 import (
+	"log/slog"
 	"regexp"
 	"slices"
 
@@ -18,6 +19,8 @@ func Module(id, title string, cells ...Cell) Cell {
 	validateIDAndTitle(id, title)
 	return &module{id, title, cells}
 }
+
+type RootLogger *slog.Logger
 
 var (
 	idRegex    = regexp.MustCompile(`^[a-z][a-z0-9_\-]{1,30}$`)
