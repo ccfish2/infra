@@ -2,6 +2,7 @@ package cell
 
 import (
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -16,7 +17,7 @@ type invoker struct {
 }
 
 type InvokerList interface {
-	AppendInvoke(func() error)
+	AppendInvoke(func(*slog.Logger, time.Duration) error)
 }
 
 type namedFunc struct {
@@ -41,7 +42,7 @@ func (inv *invoker) invoke(cont container) error {
 
 func (i *invoker) Apply(c container, rootContainer rootContainer) error {
 
-	invoker := func() error { return i.invoke(c) }
+	invoker := func(*slog.Logger, time.Duration) error { return i.invoke(c) }
 
 	return c.Invoke(func(l InvokerList) {
 		l.AppendInvoke(invoker)
