@@ -482,9 +482,3 @@ type noopReporter struct{}
 func (s *noopReporter) OK(message string)                  {}
 func (s *noopReporter) Degraded(message string, err error) {}
 func (s *noopReporter) Stopped(message string)             {}
-
-func TestScopeFromProvider(mid FullModuleID, hp Health) Scope {
-	s := rootScope(mid, hp.forModule(mid))
-	s.start()
-	return s
-}

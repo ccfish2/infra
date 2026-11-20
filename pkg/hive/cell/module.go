@@ -68,27 +68,18 @@ func (r *reporterHooks) Stop(ctx HookContext) error {
 	return nil
 }
 
-func createStructedScope(id FullModuleID, p Health, lc Lifecycle) Scope {
-	rs := rootScope(id, p.forModule(id))
-	lc.Append(&reporterHooks{rootScope: rs})
-	return rs
-}
-
 // Apply implements Cell.
-func (m *module) Apply(c container, root rootContainer) error {
+func (m *module) Apply(c container, rc rootContainer) error {
 	scope := c.Scope(m.id)
 
+	// Provide ModuleID and FullModuleID in the module's scope.
 	if err := scope.Provide(m.moduleID); err != nil {
 		return err
 	}
-
 	if err := scope.Decorate(m.fullModuleID); err != nil {
 		return err
 	}
 
-	if err := scope.Provide(createStructedScope, dig.Export(false)); err != nil {
-		return nil
-	}
 	if err := scope.Decorate(m.lifecycle); err != nil {
 		return err
 	}
@@ -97,8 +88,16 @@ func (m *module) Apply(c container, root rootContainer) error {
 		return err
 	}
 
+	if err := m.moduleDecorators(scope); err != nil {
+		return err
+	}
+
+	if err := m.modulePrivateProviders(scope); err != nil {
+		return err
+	}
+
 	for _, cell := range m.cells {
-		if err := cell.Apply(scope, root); err != nil {
+		if err := cell.Apply(scope, rc); err != nil {
 			return err
 		}
 	}
@@ -107,6 +106,40 @@ func (m *module) Apply(c container, root rootContainer) error {
 
 func (m *module) logger(log logrus.FieldLogger) logrus.FieldLogger {
 	return log.WithField(logfields.LogSubsys, m.id)
+}
+
+type moduleDecoratorParams struct {
+	In
+	ModuleDecorators ModuleDecorators
+}
+
+func (m *module) moduleDecorators(scope *dig.Scope) error {
+	provide := func(p moduleDecoratorParams) error {
+		for _, d := range p.ModuleDecorators {
+			if err := scope.Decorate(d); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return scope.Invoke(provide)
+}
+
+type modulePrivateProviderParams struct {
+	In
+	ModulePrivateProviders ModulePrivateProviders
+}
+
+func (m *module) modulePrivateProviders(scope *dig.Scope) error {
+	provide := func(p modulePrivateProviderParams) error {
+		for _, d := range p.ModulePrivateProviders {
+			if err := scope.Provide(d); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return scope.Invoke(provide)
 }
 
 // Info implements Cell.

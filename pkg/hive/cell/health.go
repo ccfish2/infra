@@ -44,20 +44,21 @@ type statusNodeReporter interface {
 }
 
 type Health interface {
-	All() []Status
-	Get(FullModuleID) (Status, error)
-	Stats() map[Level]uint64
+	// All() []Status
+	// Get(FullModuleID) (Status, error)
+	// Stats() map[Level]uint64
 
 	OK(status string)
 	Stopped(reason string)
 	Degraded(reason string, err error)
-
-	Stop(context.Context) error
-	Subscribe(context.Context, func(Update), func(error))
-	forModule(FullModuleID) statusNodeReporter
-	processed() uint64
 	NewScope(name string) Health
 	Close()
+
+	// Stop(context.Context) error
+	// Subscribe(context.Context, func(Update), func(error))
+	// forModule(FullModuleID) statusNodeReporter
+	// processed() uint64
+
 }
 
 type StatusResult struct {

@@ -103,7 +103,6 @@ type InfoStruct struct {
 	value any
 }
 
-/**/
 func (n *InfoStruct) Print(indent int, w *InfoPrinter) {
 	scs := spew.ConfigState{Indent: strings.Repeat(" ", identBy), SortKeys: true}
 	indentString := strings.Repeat(" ", indent)
